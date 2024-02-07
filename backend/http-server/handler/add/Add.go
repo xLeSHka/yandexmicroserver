@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"io"
 	"log/slog"
 	"net/http"
@@ -8,7 +9,8 @@ import (
 
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/render"
-	app "github.com/xleshka/distributedcalc/backend/internal/application"
+	application "github.com/xleshka/distributedcalc/backend/internal/application/app"
+	app "github.com/xleshka/distributedcalc/backend/internal/application/application"
 	resp "github.com/xleshka/distributedcalc/backend/internal/lib/api/response"
 	"github.com/xleshka/distributedcalc/backend/internal/lib/logger/sl"
 	orch "github.com/xleshka/distributedcalc/backend/internal/orchestrator"
@@ -23,7 +25,7 @@ type Response struct {
 	Result int `json:"result"`
 }
 
-func AddExpressionHandler(log *slog.Logger) http.HandlerFunc {
+func AddExpressionHandler(ctx context.Context, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const fn = "http.handler.add.addexpression"
 
@@ -52,6 +54,8 @@ func AddExpressionHandler(log *slog.Logger) http.HandlerFunc {
 		t := time.Now()
 		expression.CreatedTime = t
 		expression.Status = orch.Wait
+		ctx := context.WithValue(ctx, "expression", expression)
+		application.AddExpression(ctx, expression, log)
 		log.Info("req body decoded", slog.Any("req", expression))
 	}
 }

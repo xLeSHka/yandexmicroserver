@@ -11,7 +11,9 @@ type Expression struct {
 
 	CreatedTime time.Time `json:"created_time"` /* время создания запроса */
 
-	CompletedTime time.Time `json:"updated_time"` /* время завершения вычислений */
+	CompletedTime time.Time `json:"completed_time"` /* время завершения вычислений */
+
+	ExecutionTimeByMilliseconds int `json:"execution_time"`
 
 	/*
 		Возможные варианты ответа:
@@ -22,7 +24,7 @@ type Expression struct {
 }
 
 type Operation struct {
-	Name     string        `json:"name"`     /* имя арифметической операции */
+	Name     rune          `json:"name"`     /* арифметическая операция */
 	Duration time.Duration `json:"duration"` /* Время выполнения операции*/
 }
 type Todo interface {
@@ -35,5 +37,7 @@ type Todo interface {
 }
 
 const (
-	Wait = ""
+	Wait  = "the exprassion will be calculated soon"
+	Ready = "the expression calculated"
+	Error = "exprassion parsing error"
 )

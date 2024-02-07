@@ -6,12 +6,20 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xleshka/distributedcalc/backend/internal/config"
 	"github.com/xleshka/distributedcalc/backend/internal/orchestrator"
 	repeatable "github.com/xleshka/distributedcalc/backend/pkg/utils"
 )
 
+type Client interface {
+	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
+	Query(ctx context.Context, sql string, args ...interface{}) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
+	Begin(ctx context.Context) (pgx.Tx, error)
+}
 type Expression struct {
 	orchestrator.Expression
 }
