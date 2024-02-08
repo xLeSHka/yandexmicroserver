@@ -1,13 +1,14 @@
 # config/local.yaml
 
 http_server: # конфигурация нашего http-сервера
-  address: "localhost:8080"
-  timeout: 4s
+  host: "localhost"
+  port: "8082"
+  timeout: 5s
   idle_timeout: 30s
 storage:
-  username: "user123"
+  username: "postgres"
   host: "localhost"
   port: "8080"  
-  database: "database" 
-  password: "password123"
+  database: "public" 
+  password: "ybazutude423308"
   maxattempts: 5

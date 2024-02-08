@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
 	server "github.com/xleshka/distributedcalc/backend/http-server/handler/add"
@@ -18,12 +17,10 @@ import (
 func main() {
 	logg := setupLogger()
 	cfg := config.GetConfig(*logg)
-	str := cfg.Host /*просто*/
-	logg.Info(str)  /*чтобы конфиг использовать*/
+	str := cfg.HTTPServer.Host
+	logg.Info(str)
 	logg.Debug("logger debg mode enabled")
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	ctx := context.Background()
 	// cache := cache.NewCache()
 
 	postgreSQLClient, err := postgresql.NewClient(context.TODO(), cfg.StorageConfig, logg)
@@ -33,9 +30,9 @@ func main() {
 	repository := orchestrator.NewRepository(postgreSQLClient, logg)
 
 	mux := http.NewServeMux()
-	mux.Handle("/add/", middleware.Recoverer(middleware.Logger(server.AddExpressionHandler(ctx, logg, repository))))
+	mux.Handle("/add", middleware.Recoverer(middleware.Logger(server.AddExpressionHandler(ctx, logg, repository))))
 	mux.Handle("/", middleware.Recoverer(middleware.Logger(server.PostExpression(ctx, logg, repository))))
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	log.Fatal(http.ListenAndServe(":"+cfg.HTTPServer.Port, mux))
 }
 func setupLogger() *slog.Logger {
 	logg := slog.New(slog.NewJSONHandler(

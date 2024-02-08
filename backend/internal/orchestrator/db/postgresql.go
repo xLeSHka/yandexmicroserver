@@ -23,10 +23,10 @@ func formatQuery(q string) string {
 
 func (r *repository) Add(ctx context.Context, expression *orch.Expression) error {
 	q := `
-		INSERT INTO expressions 
+		INSERT INTO public.expressions 
 			(expression,expression_status,created_at) 
 		VALUES ($1,$2,$3) 
-		RETURN id
+		RETURNING id
 	`
 
 	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
@@ -47,7 +47,7 @@ func (r *repository) Add(ctx context.Context, expression *orch.Expression) error
 func (r *repository) GetAllExpressions(ctx context.Context) ([]orch.Expression, error) {
 	q := `
 	SELECT id,expression,expression_status,created_at
-		FROM expressions
+		FROM public.expressions
 	`
 
 	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
@@ -80,7 +80,7 @@ func (r *repository) GetAllExpressions(ctx context.Context) ([]orch.Expression, 
 func (r *repository) GetExpressionById(ctx context.Context, id string) (orch.Expression, error) {
 	q := `
 	SELECT id,expression,expression_status,created_at
-		FROM expressions WHERE id = $1
+		FROM public.expressions WHERE id = $1
 	`
 
 	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
@@ -99,7 +99,7 @@ func (r *repository) GetExpressionById(ctx context.Context, id string) (orch.Exp
 func (r *repository) CheckExists(ctx context.Context, expression string) (orch.Expression, bool) {
 	q := ` 
 		SELECT id,expression,expression_status,created_at
-			FROM expressions WHERE expression = $1
+			FROM public.expressions WHERE expression = $1
 	`
 	r.logger.Info(fmt.Sprintf("SQL Suery: %s", formatQuery(q)))
 
@@ -123,7 +123,7 @@ func (r *repository) CheckExists(ctx context.Context, expression string) (orch.E
 
 func (r *repository) SetExpression(ctx context.Context, expression orch.Expression) error {
 	q := `
-		INSERT INTO exprassions (expression,expression_status,created_at) 
+		INSERT INTO public.exprassions (expression,expression_status,created_at) 
 		VALUES ($1,$2,$3) WHERE id = $4
 	`
 
@@ -137,7 +137,7 @@ func (r *repository) SetExpression(ctx context.Context, expression orch.Expressi
 
 func (r *repository) GetAllOperations(ctx context.Context) ([]orch.Operation, error) {
 	q := `
-		SELECT operation, execution_time_by_milliseconds FROM operations
+		SELECT operation, execution_time_by_milliseconds FROM public.operations
 	`
 	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 	rows, err := r.client.Query(ctx, q)
@@ -167,7 +167,7 @@ func (r *repository) GetAllOperations(ctx context.Context) ([]orch.Operation, er
 func (r *repository) SetExecutionTime(ctx context.Context, operation string, timeInSeconds int) {
 	q := `
 		INSERT INTO 
-		operations (execution_time_by_milliseconds) 
+		public.operations (execution_time_by_milliseconds) 
 		VALUES ($1) WHERE operation = $2
 	`
 

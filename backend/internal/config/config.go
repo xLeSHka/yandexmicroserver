@@ -24,7 +24,8 @@ type StorageConfig struct {
 }
 
 type HTTPServer struct {
-	Address string `yaml:"address" env-default:"0.0.0.0:8080"`
+	Host string `yaml:"host" env-default:"0.0.0.0"`
+	Port string `yaml:"port" env-default:"8082"`
 }
 
 var instance *Config
