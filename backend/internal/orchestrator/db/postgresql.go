@@ -1,4 +1,4 @@
-package orchestrator
+package db
 
 import (
 	"context"
@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	orch "github.com/xleshka/distributedcalc/backend/internal/orchestrator"
@@ -22,43 +21,17 @@ func formatQuery(q string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(q, "\t", " "), "\n", " ")
 }
 
-func (r *repository) Add(ctx context.Context, expression *orch.Expression, log *slog.Logger) error {
+func (r *repository) Add(ctx context.Context, expression *orch.Expression) error {
 	q := `
 		INSERT INTO expressions 
-			(expression,expression_status,created_at,completed_at,execution_time_by_milliseconds) 
-		VALUES ($1,$2,$3,$4,$5,$6) 
+			(expression,expression_status,created_at) 
+		VALUES ($1,$2,$3) 
 		RETURN id
 	`
-	executTime := make(map[string]int)
-	for _, r := range expression.Expression {
-		switch r {
-		case '+':
-			executTime["+"]++
-		case '-':
-			executTime["-"]++
-		case '/':
-			executTime["/"]++
-		case '*':
-			executTime["*"]++
-		}
-	}
-
-	res := func(mp map[string]int) int {
-		tempRes := 0
-		for _, num := range mp {
-			tempRes += num
-		}
-		return tempRes
-	}(executTime)
-
-	expression.ExecutionTimeByMilliseconds = res
-	expression.CompletedTime = expression.CreatedTime.Add(time.Duration(res) * time.Millisecond)
-	ctx = context.WithValue(ctx, "expression", expression)
 
 	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 	if err := r.client.QueryRow(ctx, q, expression.Expression,
-		expression.Status, expression.CreatedTime, expression.CompletedTime,
-		expression.ExecutionTimeByMilliseconds).Scan(&expression.Id); err != nil {
+		expression.Status, expression.CreatedTime).Scan(&expression.Id); err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok {
 			newErr := fmt.Errorf("sql error:%s, Detail: %s Where: %s, Code: %s, SQLState: %s",
 				pgErr.Message, pgErr.Detail, pgErr.Where, pgErr.Code, pgErr.SQLState())
@@ -71,9 +44,9 @@ func (r *repository) Add(ctx context.Context, expression *orch.Expression, log *
 	return nil
 }
 
-func (r *repository) GetAllExpressions(ctx context.Context, log *slog.Logger) ([]orch.Expression, error) {
+func (r *repository) GetAllExpressions(ctx context.Context) ([]orch.Expression, error) {
 	q := `
-	SELECT id,expression,expression_status,created_at,completed_at,execution_time_by_milliseconds 
+	SELECT id,expression,expression_status,created_at
 		FROM expressions
 	`
 
@@ -90,7 +63,7 @@ func (r *repository) GetAllExpressions(ctx context.Context, log *slog.Logger) ([
 		var expr orch.Expression
 
 		err := rows.Scan(&expr.Id, &expr.Expression, &expr.Status,
-			&expr.CreatedTime, &expr.CompletedTime, &expr.ExecutionTimeByMilliseconds)
+			&expr.CreatedTime)
 		if err != nil {
 			r.logger.Error(err.Error())
 			return nil, err
@@ -104,9 +77,9 @@ func (r *repository) GetAllExpressions(ctx context.Context, log *slog.Logger) ([
 	return expressions, nil
 }
 
-func (r *repository) GetExpressionById(ctx context.Context, id string, log *slog.Logger) (orch.Expression, error) {
+func (r *repository) GetExpressionById(ctx context.Context, id string) (orch.Expression, error) {
 	q := `
-	SELECT id,expression,expression_status,created_at,completed_at,execution_time_by_milliseconds 
+	SELECT id,expression,expression_status,created_at
 		FROM expressions WHERE id = $1
 	`
 
@@ -115,7 +88,7 @@ func (r *repository) GetExpressionById(ctx context.Context, id string, log *slog
 	var expr orch.Expression
 
 	err := r.client.QueryRow(ctx, q, id).Scan(&expr.Id, &expr.Expression, &expr.Status,
-		&expr.CreatedTime, &expr.CompletedTime, &expr.ExecutionTimeByMilliseconds)
+		&expr.CreatedTime)
 	if err != nil {
 		r.logger.Error(err.Error())
 		return orch.Expression{}, err
@@ -123,40 +96,85 @@ func (r *repository) GetExpressionById(ctx context.Context, id string, log *slog
 	return expr, nil
 }
 
-func (r *repository) CheckExists(ctx context.Context, expression string, log *slog.Logger) (orch.Expression, bool) {
-	q := `
-		SELECT id,expression,expression_status,created_at,completed_at,execution_time_by_milliseconds 
+func (r *repository) CheckExists(ctx context.Context, expression string) (orch.Expression, bool) {
+	q := ` 
+		SELECT id,expression,expression_status,created_at
 			FROM expressions WHERE expression = $1
 	`
-
 	r.logger.Info(fmt.Sprintf("SQL Suery: %s", formatQuery(q)))
 
 	var expr orch.Expression
 
 	err := r.client.QueryRow(ctx, q, expression).Scan(&expr.Id, &expr.Expression, &expr.Status,
-		&expr.CreatedTime, &expr.CompletedTime, &expr.ExecutionTimeByMilliseconds)
+		&expr.CreatedTime)
 
 	if err == sql.ErrNoRows {
+		r.logger.Info("false suc")
 		return orch.Expression{}, false
 	} else if err != nil {
+		r.logger.Info("unsuccesful")
 		r.logger.Error(err.Error())
 		return orch.Expression{}, false
 	}
+	r.logger.Info("true suc")
 	return expr, true
 
 }
 
-func (r *repository) SetExpression(ctx context.Context, expression orch.Expression, log *slog.Logger) error {
+func (r *repository) SetExpression(ctx context.Context, expression orch.Expression) error {
 	q := `
-		INSERT INTO exprassions (expression,expression_status,created_at,completed_at,execution_time_by_milliseconds) 
-		VALUES ($1,$2,$3,$4,$5,$6) WHERE id = $7
+		INSERT INTO exprassions (expression,expression_status,created_at) 
+		VALUES ($1,$2,$3) WHERE id = $4
 	`
 
 	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
 	r.client.QueryRow(ctx, q, expression.Expression,
-		expression.Status, expression.CreatedTime, expression.CompletedTime,
-		expression.ExecutionTimeByMilliseconds, expression.Id)
+		expression.Status, expression.CreatedTime, expression.Id)
+
+	return nil
+}
+
+func (r *repository) GetAllOperations(ctx context.Context) ([]orch.Operation, error) {
+	q := `
+		SELECT operation, execution_time_by_milliseconds FROM operations
+	`
+	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+	rows, err := r.client.Query(ctx, q)
+	if err != nil {
+		r.logger.Error(err.Error())
+		return nil, err
+	}
+
+	operations := make([]orch.Operation, 0)
+
+	for rows.Next() {
+		var operation orch.Operation
+		err := rows.Scan(&operation.Operation, &operation.ExecutionTimeByMilliseconds)
+		if err != nil {
+			r.logger.Error(err.Error())
+			return nil, err
+		}
+		operations = append(operations, operation)
+	}
+	if err := rows.Err(); err != nil {
+		r.logger.Error(err.Error())
+		return nil, err
+	}
+	return operations, nil
+}
+
+func (r *repository) SetExecutionTime(ctx context.Context, operation string, timeInSeconds int) {
+	q := `
+		INSERT INTO 
+		operations (execution_time_by_milliseconds) 
+		VALUES ($1) WHERE operation = $2
+	`
+
+	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+
+	r.client.QueryRow(ctx, q, timeInSeconds, operation)
+
 }
 
 func NewRepository(client postgresql.Client, log *slog.Logger) orch.Repository {

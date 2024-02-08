@@ -4,13 +4,12 @@ import (
 	"context"
 	"log"
 	"log/slog"
+	"net/http"
 	"os"
+	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	server "github.com/xleshka/distributedcalc/backend/http-server/handler/add"
-	"github.com/xleshka/distributedcalc/backend/http-server/middleware/logger"
-	"github.com/xleshka/distributedcalc/backend/internal/application/cache"
 	"github.com/xleshka/distributedcalc/backend/internal/config"
 	orchestrator "github.com/xleshka/distributedcalc/backend/internal/orchestrator/db"
 	"github.com/xleshka/distributedcalc/backend/pkg/postgresql"
@@ -23,23 +22,20 @@ func main() {
 	logg.Info(str)  /*чтобы конфиг использовать*/
 	logg.Debug("logger debg mode enabled")
 
-	ctx := context.Background()
-	cache := cache.NewCache()
-	ctx = context.WithValue(ctx, "cache", cache)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	// cache := cache.NewCache()
 
 	postgreSQLClient, err := postgresql.NewClient(context.TODO(), cfg.StorageConfig, logg)
 	if err != nil {
 		log.Fatalf("%v", err)
 	}
-	r := orchestrator.NewRepository(postgreSQLClient, logg)
+	repository := orchestrator.NewRepository(postgreSQLClient, logg)
 
-	router := chi.NewRouter()
-
-	router.Use(middleware.RequestID)
-	router.Use(logger.New(logg))
-	router.Use(middleware.Recoverer)
-	router.Use(middleware.URLFormat)
-	router.Post("/Add", server.AddExpressionHandler(ctx, logg))
+	mux := http.NewServeMux()
+	mux.Handle("/add/", middleware.Recoverer(middleware.Logger(server.AddExpressionHandler(ctx, logg, repository))))
+	mux.Handle("/", middleware.Recoverer(middleware.Logger(server.PostExpression(ctx, logg, repository))))
+	log.Fatal(http.ListenAndServe(":8080", mux))
 }
 func setupLogger() *slog.Logger {
 	logg := slog.New(slog.NewJSONHandler(

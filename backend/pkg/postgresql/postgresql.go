@@ -10,7 +10,8 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/xleshka/distributedcalc/backend/internal/config"
-	"github.com/xleshka/distributedcalc/backend/internal/orchestrator"
+
+	// "github.com/xleshka/distributedcalc/backend/internal/orchestrator"
 	repeatable "github.com/xleshka/distributedcalc/backend/pkg/utils"
 )
 
@@ -20,12 +21,13 @@ type Client interface {
 	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
 	Begin(ctx context.Context) (pgx.Tx, error)
 }
-type Expression struct {
-	orchestrator.Expression
-}
-type Operation struct {
-	orchestrator.Operation
-}
+
+// type Expression struct {
+// 	orchestrator.Expression
+// }
+// type Operation struct {
+// 	orchestrator.Operation
+// }
 
 func NewClient(ctx context.Context, sc config.StorageConfig, log *slog.Logger) (pool *pgxpool.Pool, err error) {
 	const fn = "internal.postgresql.newclient"
@@ -43,11 +45,6 @@ func NewClient(ctx context.Context, sc config.StorageConfig, log *slog.Logger) (
 		return nil
 	}, sc.MaxAttempts, 5*time.Second)
 	if err != nil {
-		log.With(
-			slog.String("%w", fn),
-			slog.String("%s", err.Error()),
-		)
-
 		return nil, err
 	}
 	return pool, err

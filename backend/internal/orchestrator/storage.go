@@ -1,22 +1,20 @@
-package expression
+package orchestrator
 
 import (
 	"context"
 	"errors"
-
-	orch "github.com/xleshka/distributedcalc/backend/internal/orchestrator"
 )
 
 type Repository interface {
-	Add(ctx context.Context, expression orch.Expression) (id int, err error)
-	GetAllExpressions(ctx context.Context) ([]orch.Expression, error)
-	GetExpressionById(ctx context.Context, id string) (orch.Expression, error)
-	GetOneExpression(ctx context.Context, expression string) (orch.Expression, bool)
-	SetExpression(ctx context.Context, exprassion orch.Expression) error
-	GetAllOperations(ctx context.Context) ([]orch.Operation, error)
-	SetExecutionTime(ctx context.Context, name rune, timeInSeconds int)
-	Delete(ctx context.Context, id string) error
-	DeleteDaemon(ctx context.Context, id string) error
+	Add(ctx context.Context, expression *Expression) error
+	GetAllExpressions(ctx context.Context) ([]Expression, error)
+	GetExpressionById(ctx context.Context, id string) (Expression, error)
+	CheckExists(ctx context.Context, expression string) (Expression, bool)
+	SetExpression(ctx context.Context, expression Expression) error
+	GetAllOperations(ctx context.Context) ([]Operation, error)
+	SetExecutionTime(ctx context.Context, operation string, timeInSeconds int)
+	// SetDaemon(ctx context.Context) error
+	// DeleteDaemon(ctx context.Context, id string) error
 }
 
 var (

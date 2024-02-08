@@ -1,6 +1,7 @@
-package logger
+package middleware
 
 import (
+	"log"
 	"log/slog"
 	"net/http"
 	"time"
@@ -8,7 +9,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 )
 
-func New(log *slog.Logger) func(next http.Handler) http.Handler {
+func LoggingMiddleware(log *slog.Logger) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		log = log.With(slog.String("component", "middleware/logger"))
 
@@ -40,5 +41,15 @@ func New(log *slog.Logger) func(next http.Handler) http.Handler {
 		}
 		return http.HandlerFunc(fn)
 	}
-
+}
+func RecoveryMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				log.Printf("Panic: %v", err)
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
 }
