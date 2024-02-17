@@ -1,8 +1,9 @@
 # config/local.yaml
 
-http_server: # конфигурация нашего http-сервера
+http_orchestrator: # конфигурация нашего http-сервера
   host: "localhost"
-  port: "8082"
+  orch_port: "8082"
+  agent_port: "3030"
   timeout: 5s
   idle_timeout: 30s
 storage:

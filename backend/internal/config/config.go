@@ -11,7 +11,7 @@ import (
 // internal/config/config.go
 
 type Config struct {
-	HTTPServer    `yaml:"http_server"`
+	HTTPServer    `yaml:"http_orchestrator"`
 	StorageConfig `yaml:"storage"`
 }
 type StorageConfig struct {
@@ -24,8 +24,9 @@ type StorageConfig struct {
 }
 
 type HTTPServer struct {
-	Host string `yaml:"host" env-default:"0.0.0.0"`
-	Port string `yaml:"port" env-default:"8082"`
+	Host      string `yaml:"host" env-default:"0.0.0.0"`
+	OrchPort  string `yaml:"orch_port" env-default:"8082"`
+	AgentPort string `yaml:"agent_port" env-default:"3030"`
 }
 
 var instance *Config

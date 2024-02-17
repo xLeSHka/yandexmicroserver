@@ -1,6 +1,6 @@
 package agent
 
 type Agent struct {
-	ID     int `json:"id"`
-	Status int `json:"status"`
+	ID     string `json:"id"`
+	Status string `json:"status_code"`
 }
