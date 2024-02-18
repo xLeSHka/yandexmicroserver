@@ -10,7 +10,6 @@ import (
 
 	server "github.com/xleshka/distributedcalc/backend/http-server/handler/add"
 	"github.com/xleshka/distributedcalc/backend/http-server/middleware"
-	app "github.com/xleshka/distributedcalc/backend/internal/application/app"
 	"github.com/xleshka/distributedcalc/backend/internal/config"
 	"github.com/xleshka/distributedcalc/backend/internal/orchestrator/db"
 	"github.com/xleshka/distributedcalc/backend/pkg/postgresql"
@@ -30,13 +29,13 @@ func main() {
 		log.Fatal(err)
 	}
 	repository := db.NewRepository(postgreSQLClient, logg)
-	agCount, err := strconv.Atoi(cfg.AgentCount)
+	agCount, err := strconv.Atoi(cfg.HTTPServer.AgentCount)
 	if err != nil {
 		log.Fatal(err)
 	}
-	app.Initialize(agCount, ctx, logg, repository)
 
 	mux := http.NewServeMux()
+	mux.Handle("/initialize", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.AgentsInitializeHandler(agCount, ctx, logg, repository, client), logg)))
 	mux.Handle("/add", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.GetExpressionHandler(ctx, logg, repository, client), logg)))
 	mux.Handle("/", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.PostExpressionsHandler(ctx, logg, repository, client), logg)))
 	mux.Handle("/operations", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.PostOperationsHandler(ctx, logg, repository), logg)))

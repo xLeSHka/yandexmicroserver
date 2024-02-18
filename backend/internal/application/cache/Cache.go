@@ -13,11 +13,6 @@ func NewCache() *Cache {
 		Data: make(map[string]interface{}),
 	}
 }
-func (c *Cache) GetAll() map[string]interface{} {
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
-	return c.Data
-}
 func (c *Cache) Delete(id string) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()

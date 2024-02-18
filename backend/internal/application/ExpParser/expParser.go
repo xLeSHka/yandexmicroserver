@@ -3,6 +3,7 @@ package expparser
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -10,9 +11,9 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/xleshka/distributedcalc/backend/internal/agent"
+	"github.com/xleshka/distributedcalc/backend/internal/application/cache"
 )
 
 type Node struct {
@@ -20,6 +21,10 @@ type Node struct {
 	Right     *Node
 	Operation string
 	Value     float64
+}
+
+type SubExpression struct {
+	Expression string `json:"expression"`
 }
 
 func ExpressionParser(s string) (*Node, error) {
@@ -78,52 +83,57 @@ func popMember(stack *[]*Node, operators *[]string) {
 	node := &Node{Right: right, Left: left, Operation: operator}
 	*stack = append(*stack, node)
 }
-func CalcExpression(node *Node, counter *int, waitg *sync.WaitGroup, log *slog.Logger, client *http.Client, agentChan chan agent.Agent) {
-	defer waitg.Done()
+func CalcExpression(node *Node, counter *int, log *slog.Logger, client *http.Client, agentChache *cache.Cache) {
+
 	if node == nil {
 		return
 	}
-	wg := &sync.WaitGroup{}
 	if node.Left != nil {
-		wg.Add(1)
-		go CalcExpression(node.Left, counter, wg, log, client, agentChan)
+		go CalcExpression(node.Left, counter, log, client, agentChache)
 	}
 	if node.Right != nil {
-		wg.Add(1)
-		go CalcExpression(node.Right, counter, wg, log, client, agentChan)
+		go CalcExpression(node.Right, counter, log, client, agentChache)
 	}
 	if node.Left == nil && node.Right == nil {
 		return
 	}
-	wg.Wait()
 	if node.Operation != "" {
 		subExpression := fmt.Sprintf("%0.1f %s %0.1f", node.Left.Value, node.Operation, node.Right.Value)
 		// app.pos
-		var err error
-		for {
-			node.Value, err = PostTask(log, subExpression, client, agentChan)
-			if err == nil {
-				break
-			}
-		}
+		go func() {
+			node.Value, _ = PostTask(log, subExpression, client, agentChache)
+
+		}()
 		return
 	}
 }
 
-func PostTask(log *slog.Logger, exprassion string, client *http.Client, agentChan chan agent.Agent) (float64, error) {
-	data := []byte(exprassion)
-	r := bytes.NewReader(data)
+func PostTask(log *slog.Logger, exprassion string, client *http.Client, agentCache *cache.Cache) (float64, error) {
+	expr := SubExpression{Expression: exprassion}
+
+	data, err := json.Marshal(expr)
+
 	var ag agent.Agent
+	br := false
 	for {
-		ag := <-agentChan
-		if ag.Status != "Error" {
-			agentChan <- ag
+		for _, r := range agentCache.Data {
+			ag = r.(agent.Agent)
+			if ag.Status != "Error" && ag.Status != "Busy" {
+				br = true
+				break
+			}
+		}
+		if br {
 			break
 		}
-		agentChan <- ag
 	}
 
-	resp, err := http.Post(ag.Address, "", r)
+	req, err := http.NewRequest("POST", ag.Address, bytes.NewBuffer(data))
+	if err != nil {
+		log.Error("failed req POSTTASK")
+		return 0, err
+	}
+	resp, err := client.Do(req)
 	if err != nil {
 		log.Error("failed post subExprassion to agent: %v", err)
 		return 0, err
@@ -142,15 +152,12 @@ func PostTask(log *slog.Logger, exprassion string, client *http.Client, agentCha
 	return res, nil
 }
 
-func ValidatedPostOrder(ctx context.Context, log *slog.Logger, expression string, client *http.Client, agentChan chan agent.Agent) (float64, error) {
+func ValidatedPostOrder(ctx context.Context, log *slog.Logger, expression string, client *http.Client, agentCache *cache.Cache) (float64, error) {
 	node, err := ExpressionParser(expression)
 	if err != nil {
 		return 0, err
 	}
 	var counter int
-	wg := &sync.WaitGroup{}
-	wg.Add(1)
-	CalcExpression(node, &counter, wg, log, client, agentChan)
-	wg.Wait()
+	CalcExpression(node, &counter, log, client, agentCache)
 	return node.Value, nil
 }

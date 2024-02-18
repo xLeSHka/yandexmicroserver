@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
 	"log/slog"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 	"unicode"
@@ -24,15 +25,30 @@ var (
 	agentCache      *cache.Cache
 	operaionsCache  *cache.Cache
 	expressionCache *cache.Cache
-	agentChan       chan agent.Agent
 )
 
-func Initialize(ahentCount int, ctx context.Context, logg *slog.Logger, rep orch.Repository) error {
+type SafeGoroutinCounter struct {
+	GoroutinCounter int
+	mu              sync.RWMutex
+}
+
+func (SGC *SafeGoroutinCounter) Get() int {
+	SGC.mu.RLock()
+	defer SGC.mu.RUnlock()
+	return SGC.GoroutinCounter
+}
+func (SGC *SafeGoroutinCounter) Sum(v int) {
+	SGC.mu.Lock()
+	defer SGC.mu.Unlock()
+	SGC.GoroutinCounter += v
+}
+
+func Initialize(agentCount int, ctx context.Context, logg *slog.Logger, rep orch.Repository, client *http.Client) error {
 	agentCache = cache.NewCache()
 	operaionsCache = cache.NewCache()
 	expressionCache = cache.NewCache()
-	agentChan := make(chan agent.Agent, ahentCount)
-	_, err := AllOperations(ctx, logg, rep)
+
+	_, err := AllExpressions(ctx, logg, rep, client)
 	if err != nil {
 		log.Fatalf("%v", err)
 		return err
@@ -48,19 +64,10 @@ func Initialize(ahentCount int, ctx context.Context, logg *slog.Logger, rep orch
 		log.Fatalf("%v", err)
 		return err
 	}
-	for _, a := range agentCache.GetAll() {
-		ag := a.(agent.Agent)
-		if ag.Status == "Error" {
-			continue
-		}
-		agentChan <- ag
-	}
-	if len(agentChan) == 0 {
-		log.Fatal("Nil agents running")
-		return errors.New("nil agents running")
-	}
+
 	return nil
 }
+
 func ValidExpression(expression string) bool {
 
 	for _, r := range expression {
@@ -84,21 +91,110 @@ func ValidExpression(expression string) bool {
 	}
 	return true
 }
+func Cacl(Expression string, log *slog.Logger) string {
+	out := make(chan float64)
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+	go CaclSubExprassion(Expression, out, wg, log)
+	go func() {
+		wg.Wait()
+		close(out)
+	}()
+	return fmt.Sprintf("%0.1f", <-out)
+}
+func CaclSubExprassion(Expression string, out chan<- float64, wg *sync.WaitGroup, log *slog.Logger) {
+	defer wg.Done()
+
+	members := strings.Fields(Expression)
+	log.Info("CaclSubExprassion")
+	switch members[1] {
+	case "+":
+		data, _ := operaionsCache.Get("+")
+		plusOper := data.(orch.Operation)
+		timer := time.NewTimer(time.Duration(plusOper.ExecutionTimeByMilliseconds * int(time.Millisecond)))
+		ExecutionTimer(*timer)
+		left, err := strconv.ParseFloat(members[0], 64)
+		if err != nil {
+			log.Error("failed parse: %v", err)
+			return
+		}
+		right, err := strconv.ParseFloat(members[0], 64)
+		if err != nil {
+			log.Error("failed parse: %v", err)
+			return
+		}
+		out <- left + right
+	case "-":
+		data, _ := operaionsCache.Get("-")
+		minusOper := data.(orch.Operation)
+		timer := time.NewTimer(time.Duration(minusOper.ExecutionTimeByMilliseconds * int(time.Millisecond)))
+		ExecutionTimer(*timer)
+		left, err := strconv.ParseFloat(members[0], 64)
+		if err != nil {
+			log.Error("failed parse: %v", err)
+			return
+		}
+		right, err := strconv.ParseFloat(members[0], 64)
+		if err != nil {
+			log.Error("failed parse: %v", err)
+			return
+		}
+		out <- left - right
+	case "*":
+		data, _ := operaionsCache.Get("*")
+		miltiplyOper := data.(orch.Operation)
+		timer := time.NewTimer(time.Duration(miltiplyOper.ExecutionTimeByMilliseconds * int(time.Millisecond)))
+		ExecutionTimer(*timer)
+		left, err := strconv.ParseFloat(members[0], 64)
+		if err != nil {
+			log.Error("failed parse: %v", err)
+			return
+		}
+		right, err := strconv.ParseFloat(members[0], 64)
+		if err != nil {
+			log.Error("failed parse: %v", err)
+			return
+		}
+		out <- left * right
+	case "/":
+		data, _ := operaionsCache.Get("/")
+		divideOper := data.(orch.Operation)
+		timer := time.NewTimer(time.Duration(divideOper.ExecutionTimeByMilliseconds * int(time.Millisecond)))
+		ExecutionTimer(*timer)
+		left, err := strconv.ParseFloat(members[0], 64)
+		if err != nil {
+			log.Error("failed parse: %v", err)
+			return
+		}
+		right, err := strconv.ParseFloat(members[0], 64)
+		if err != nil {
+			log.Error("failed parse: %v", err)
+			return
+		}
+		out <- left / right
+	}
+}
+func ExecutionTimer(v time.Timer) {
+	<-v.C
+}
 
 func AllExpressions(ctx context.Context, log *slog.Logger, rep orch.Repository, client *http.Client) ([]orch.Expression, error) {
 	expressions := make([]orch.Expression, 0)
-	if len(expressionCache.GetAll()) == 0 {
+	if len(expressionCache.Data) == 0 {
 		rep.GetAllExpressions(ctx, expressionCache)
 	}
-	for _, expr := range expressionCache.GetAll() {
+	for _, expr := range expressionCache.Data {
 		expression, _ := expr.(orch.Expression)
 		expressions = append(expressions, expression)
+		if expression.Status == "wait" {
+			CalcExpression(ctx, log, expression, rep, client)
+		}
 	}
 	return expressions, nil
 }
 func SetExpression(ctx context.Context, express *orch.Expression, log *slog.Logger, rep orch.Repository) error {
 	express.CompletedTime = time.Now()
-	err := rep.SetExpression(ctx, express, expressionCache)
+	err := rep.SetExpression(ctx, *express, expressionCache)
 	if err != nil {
 		return err
 	}
@@ -109,7 +205,7 @@ func AddExpression(ctx context.Context, express *orch.Expression, log *slog.Logg
 	expression, exist := rep.CheckExists(ctx, express.Expression)
 	if exist {
 		if expression.Status == "wait" {
-			CalcExpression(ctx, log, express, rep, client, agentChan)
+			CalcExpression(ctx, log, *express, rep, client)
 		}
 		return &expression, nil
 	}
@@ -118,36 +214,37 @@ func AddExpression(ctx context.Context, express *orch.Expression, log *slog.Logg
 		log.Error("failed add expression to bd")
 		return &orch.Expression{}, err
 	}
+	log.Info(express.Id, express.Expression, express.Status)
 	if express.Status == "wait" {
-		CalcExpression(ctx, log, express, rep, client, agentChan)
+		CalcExpression(ctx, log, *express, rep, client)
 	}
-
+	log.Info(express.Id, express.Expression, express.Status)
 	return express, nil
 }
-func CalcExpression(ctx context.Context, log *slog.Logger, expression *orch.Expression, rep orch.Repository, client *http.Client, agentChan chan agent.Agent) {
-	go func() {
-		expression.Status = "proccess"
-		err := SetExpression(ctx, expression, log, rep)
-		if err != nil {
-			expression.Status = "error"
-			SetExpression(ctx, expression, log, rep)
-			log.Error("failed calculate exprassion: %v", err)
-			return
-		}
-		res, err := expparser.ValidatedPostOrder(ctx, log, expression.Expression, client, agentChan)
-		mu := sync.Mutex{}
-		mu.Lock()
-		defer mu.Unlock()
-		if err != nil {
-			expression.Status = "error"
-			SetExpression(ctx, expression, log, rep)
-			log.Error("failed calculate exprassion: %v", err)
-			return
-		}
-		expression.Expression += fmt.Sprintf(" = %0.1f", res)
-		expression.Status = "calculated"
-		SetExpression(ctx, expression, log, rep)
-	}()
+func CalcExpression(ctx context.Context, log *slog.Logger, expression orch.Expression, rep orch.Repository, client *http.Client) {
+
+	expression.Status = "proccess"
+	err := SetExpression(ctx, &expression, log, rep)
+	if err != nil {
+		expression.Status = "error"
+		SetExpression(ctx, &expression, log, rep)
+		log.Error("failed calculate exprassion: %v", err)
+		return
+	}
+	res, err := expparser.ValidatedPostOrder(ctx, log, expression.Expression, client, agentCache)
+	mu := sync.Mutex{}
+	mu.Lock()
+	defer mu.Unlock()
+	if err != nil {
+		expression.Status = "error"
+		SetExpression(ctx, &expression, log, rep)
+		log.Error("failed calculate exprassion: %v", err)
+		return
+	}
+	expression.Expression += fmt.Sprintf(" = %0.1f", res)
+	expression.Status = "calculated"
+	SetExpression(ctx, &expression, log, rep)
+
 }
 func AllOperations(ctx context.Context, log *slog.Logger, rep orch.Repository) ([]orch.Operation, error) {
 	operations := make([]orch.Operation, 0)
@@ -168,7 +265,7 @@ func AllOperations(ctx context.Context, log *slog.Logger, rep orch.Repository) (
 		}
 	}
 
-	for _, operation := range operaionsCache.GetAll() {
+	for _, operation := range operaionsCache.Data {
 		op, _ := operation.(orch.Operation)
 		operations = append(operations, op)
 	}
@@ -209,12 +306,12 @@ func AllAgents(ctx context.Context, log *slog.Logger, rep orch.Repository) ([]ag
 	return agents, nil
 }
 
-func SetAgent(ctx context.Context, log *slog.Logger, id, status string, rep orch.Repository) error {
-	if status == "Error" {
-		go DeleteAgent(ctx, log, id, rep)
+func SetAgent(ctx context.Context, log *slog.Logger, ag agent.Agent, rep orch.Repository) error {
+	if ag.Status == "Error" {
+		go DeleteAgent(ctx, log, ag.ID, rep)
 		return nil
 	}
-	err := rep.SetAgent(ctx, id, status, agentCache)
+	err := rep.SetAgent(ctx, ag, agentCache)
 	if err != nil {
 		log.Error(err.Error())
 		return err
@@ -223,6 +320,11 @@ func SetAgent(ctx context.Context, log *slog.Logger, id, status string, rep orch
 }
 
 func AddAgent(ctx context.Context, log *slog.Logger, ag agent.Agent, rep orch.Repository) (string, error) {
+
+	agnt, found := rep.ChechIfExist(ctx, ag)
+	if found {
+		return agnt.ID, nil
+	}
 	err := rep.AddAgent(ctx, &ag, agentCache)
 	if err != nil {
 		return "", err
@@ -253,6 +355,7 @@ func AddAgentReq(ctx context.Context, log *slog.Logger, ag agent.Agent, url stri
 }
 func AgentHeartBeat(ctx context.Context, log *slog.Logger, ag agent.Agent, url string, client *http.Client, errCh chan struct{}) {
 	log.Info("AgentHeartBeat")
+
 	data, err := json.Marshal(ag)
 	if err != nil {
 		log.Error("failed marshal agent: %s, error: %v", ag.Address, err)
@@ -276,6 +379,7 @@ func timerStop(v time.Timer, ctx context.Context, id string, rep orch.Repository
 	}
 	return nil
 }
+
 func DeleteAgent(ctx context.Context, log *slog.Logger, id string, rep orch.Repository) {
 	timer := time.NewTimer(60 * time.Second)
 

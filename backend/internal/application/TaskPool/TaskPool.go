@@ -5,31 +5,31 @@ import (
 	"sync"
 )
 
-type Task struct {
-	Expression string
-}
+// type Task struct {
+// 	Expression string
+// }
 
-func (t *Task) Process() {
+// func (t *Task) Process() {
 
-}
+// }
 
-type WorkerPool struct {
-	Tasks   []Task
-	goCount int
-	tasksCh chan Task
-	wg      sync.WaitGroup
-}
+// type WorkerPool struct {
+// 	Tasks   []Task
+// 	goCount int
+// 	tasksCh chan Task
+// 	wg      sync.WaitGroup
+// }
 
-func (wp *WorkerPool) worker() {
-	for task := range wp.tasksCh {
-		task.Process()
-		wp.wg.Done()
-	}
-}
+// func (wp *WorkerPool) worker() {
+// 	for task := range wp.tasksCh {
+// 		task.Process()
+// 		wp.wg.Done()
+// 	}
+// }
 
-func (wp *WorkerPool) Run() {
+// func (wp *WorkerPool) Run() {
 
-}
+// }
 
 // type Task struct {
 // 	Address    string

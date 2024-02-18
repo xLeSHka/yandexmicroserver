@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/xleshka/distributedcalc/backend/internal/agent"
+	expparser "github.com/xleshka/distributedcalc/backend/internal/application/ExpParser"
 	app "github.com/xleshka/distributedcalc/backend/internal/application/app"
 	resp "github.com/xleshka/distributedcalc/backend/internal/lib/api/response"
 	"github.com/xleshka/distributedcalc/backend/internal/lib/logger/sl"
@@ -147,11 +148,11 @@ func GetOperationHandler(ctx context.Context, log *slog.Logger, rep orch.Reposit
 
 	}
 }
-func GetSubExprassion(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+func GetSubExprassion(ctx context.Context, log *slog.Logger, ag agent.Agent, heartBeatUrl string, client *http.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			log.Error("bad post subExprassion method type")
-			http.Error(w, "fab post subExprassion method type", http.StatusInternalServerError)
+			http.Error(w, "bad post subExprassion method type", http.StatusInternalServerError)
 			return
 		}
 		body, err := io.ReadAll(r.Body)
@@ -161,7 +162,23 @@ func GetSubExprassion(ctx context.Context, log *slog.Logger) http.HandlerFunc {
 			http.Error(w, "failed read req body", http.StatusInternalServerError)
 			return
 		}
-		w.Write(body)
+		var expr expparser.SubExpression
+		err = json.Unmarshal(body, &expr)
+		if err != nil {
+			log.Error(err.Error())
+			return
+		}
+
+		var res string
+		errCh := make(chan struct{})
+		ag.Status = "Busy"
+		app.AgentHeartBeat(ctx, log, ag, heartBeatUrl, client, errCh)
+		res = app.Cacl(expr.Expression, log)
+		ag.Status = "Ok"
+		app.AgentHeartBeat(ctx, log, ag, heartBeatUrl, client, errCh)
+
+		log.Info(fmt.Sprintf("Calc sub expression %0.1f", res))
+		w.Write([]byte(res))
 	}
 }
 func GetAddAgentHandler(ctx context.Context, log *slog.Logger, rep orch.Repository) http.HandlerFunc {
@@ -215,7 +232,8 @@ func GetAgentStatusHandler(ctx context.Context, log *slog.Logger, rep orch.Repos
 			http.Error(w, "failed unmarshal body", http.StatusInternalServerError)
 			return
 		}
-		err = app.SetAgent(ctx, log, agent.ID, agent.Status, rep)
+		agent.LastHearBeat = time.Now()
+		err = app.SetAgent(ctx, log, agent, rep)
 		if err != nil {
 			log.Error("failed set agent  status: %v", err)
 			http.Error(w, "failed set agent  status", http.StatusInternalServerError)
@@ -228,7 +246,7 @@ func PostAgentsHandler(ctx context.Context, log *slog.Logger, rep orch.Repositor
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			log.Error("bad get agents method type")
-			http.Error(w, fmt.Sprintf("bad get agents method type"), http.StatusBadRequest)
+			http.Error(w, "bad get agents method type", http.StatusBadRequest)
 			return
 		}
 		agents, err := app.AllAgents(ctx, log, rep)
@@ -241,6 +259,22 @@ func PostAgentsHandler(ctx context.Context, log *slog.Logger, rep orch.Repositor
 		if err := json.NewEncoder(w).Encode(agents); err != nil {
 			log.Error(err.Error())
 			http.Error(w, fmt.Sprintf("failed encode agents to json: %v", err), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func AgentsInitializeHandler(agCount int, ctx context.Context, log *slog.Logger, rep orch.Repository, client *http.Client) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			log.Error("bad init agents method type")
+			http.Error(w, "bad init agents method type", http.StatusBadRequest)
+			return
+		}
+		err := app.Initialize(agCount, ctx, log, rep, client)
+		if err != nil {
+			log.Error("bad init agents method type")
+			http.Error(w, "bad init agents method type", http.StatusBadRequest)
 			return
 		}
 	}

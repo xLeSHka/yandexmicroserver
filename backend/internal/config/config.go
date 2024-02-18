@@ -31,6 +31,7 @@ type HTTPServer struct {
 	AgentPort2 string `yaml:"agent_port2" env-default:"3032"`
 	AgentPort3 string `yaml:"agent_port3" env-default:"3033"`
 	AgentPort4 string `yaml:"agent_port4" env-default:"3034"`
+	AgentCount string `yaml:"agent_count" env-default:"5"`
 }
 
 var instance *Config

@@ -27,14 +27,14 @@ func formatQuery(q string) string {
 func (r *repository) Add(ctx context.Context, expression *orch.Expression, cache *cache.Cache) error {
 	q := `
 		INSERT INTO public.expressions 
-			(expression,expression_status,created_at) 
-		VALUES ($1,$2,$3) 
+			(expression,expression_status,created_at,completed_at) 
+		VALUES ($1,$2,$3,$4) 
 		RETURNING id
 	`
 
 	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 	if err := r.client.QueryRow(ctx, q, expression.Expression,
-		expression.Status, expression.CreatedTime).Scan(&expression.Id); err != nil {
+		expression.Status, expression.CreatedTime, expression.CompletedTime).Scan(&expression.Id); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.Is(err, pgErr) {
 			pgErr = err.(*pgconn.PgError)
@@ -52,7 +52,7 @@ func (r *repository) Add(ctx context.Context, expression *orch.Expression, cache
 
 func (r *repository) GetAllExpressions(ctx context.Context, cache *cache.Cache) ([]orch.Expression, error) {
 	q := `
-	SELECT id,expression,expression_status,created_at
+	SELECT id,expression,expression_status,created_at,completed_at
 		FROM public.expressions
 	`
 
@@ -69,7 +69,7 @@ func (r *repository) GetAllExpressions(ctx context.Context, cache *cache.Cache) 
 		var expr orch.Expression
 
 		err := rows.Scan(&expr.Id, &expr.Expression, &expr.Status,
-			&expr.CreatedTime)
+			&expr.CreatedTime, &expr.CompletedTime)
 		if err != nil {
 			r.logger.Error(err.Error())
 			return nil, err
@@ -86,7 +86,7 @@ func (r *repository) GetAllExpressions(ctx context.Context, cache *cache.Cache) 
 
 func (r *repository) GetExpressionById(ctx context.Context, id string) (orch.Expression, error) {
 	q := `
-	SELECT id,expression,expression_status,created_at
+	SELECT id,expression,expression_status,created_at,completed_at
 		FROM public.expressions WHERE id = $1
 	`
 
@@ -95,7 +95,7 @@ func (r *repository) GetExpressionById(ctx context.Context, id string) (orch.Exp
 	var expr orch.Expression
 
 	err := r.client.QueryRow(ctx, q, id).Scan(&expr.Id, &expr.Expression, &expr.Status,
-		&expr.CreatedTime)
+		&expr.CreatedTime, &expr.CompletedTime)
 	if err != nil {
 		r.logger.Error(err.Error())
 		return orch.Expression{}, err
@@ -105,7 +105,7 @@ func (r *repository) GetExpressionById(ctx context.Context, id string) (orch.Exp
 
 func (r *repository) CheckExists(ctx context.Context, expression string) (orch.Expression, bool) {
 	q := ` 
-		SELECT id,expression,expression_status,created_at
+		SELECT id,expression,expression_status,created_at, completed_at
 			FROM public.expressions WHERE expression = $1
 	`
 	r.logger.Info(fmt.Sprintf("SQL Suery: %s", formatQuery(q)))
@@ -113,7 +113,7 @@ func (r *repository) CheckExists(ctx context.Context, expression string) (orch.E
 	var expr orch.Expression
 
 	err := r.client.QueryRow(ctx, q, expression).Scan(&expr.Id, &expr.Expression, &expr.Status,
-		&expr.CreatedTime)
+		&expr.CreatedTime, &expr.CompletedTime)
 
 	if err == sql.ErrNoRows {
 		r.logger.Info("false suc")
@@ -128,7 +128,7 @@ func (r *repository) CheckExists(ctx context.Context, expression string) (orch.E
 
 }
 
-func (r *repository) SetExpression(ctx context.Context, expression *orch.Expression, cache *cache.Cache) error {
+func (r *repository) SetExpression(ctx context.Context, expression orch.Expression, cache *cache.Cache) error {
 	q := `
 	UPDATE public.exprassions SET (expression,expression_status,completed_at) 
 	= ($1,$2,$3) WHERE id = $4;		
@@ -200,7 +200,7 @@ func (r *repository) SetExecutionTime(ctx context.Context, operaion *orch.Operat
 }
 
 func (r *repository) GetAllAgents(ctx context.Context, cache *cache.Cache) ([]agent.Agent, error) {
-	q := `SELECT id,status_code FROM public.agents`
+	q := `SELECT id,agent_address,status_code,last_heartbeat FROM public.agents`
 
 	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
@@ -212,7 +212,7 @@ func (r *repository) GetAllAgents(ctx context.Context, cache *cache.Cache) ([]ag
 	agents := make([]agent.Agent, 0)
 	for rows.Next() {
 		var agent agent.Agent
-		err := rows.Scan(&agent.ID, &agent.Status)
+		err := rows.Scan(&agent.ID, &agent.Address, &agent.Status, &agent.LastHearBeat)
 		if err != nil {
 			r.logger.Error(err.Error())
 			return nil, err
@@ -226,13 +226,34 @@ func (r *repository) GetAllAgents(ctx context.Context, cache *cache.Cache) ([]ag
 	}
 	return agents, nil
 }
+
+func (r *repository) ChechIfExist(ctx context.Context, agnt agent.Agent) (agent.Agent, bool) {
+	q := `SELECT id,agent_address,status_code ,last_heartbeat
+	FROM public.Agents WHERE agent_address = $1`
+
+	r.logger.Info("SQL Query %s", formatQuery(q))
+
+	var ag agent.Agent
+
+	err := r.client.QueryRow(ctx, q, agnt.Address).Scan(&ag.ID, &ag.Address, &ag.Status, &ag.LastHearBeat)
+	if err == sql.ErrNoRows {
+		r.logger.Info("false suc")
+		return agent.Agent{}, false
+	} else if err != nil {
+		r.logger.Info("unsuccesful")
+		r.logger.Error(err.Error())
+		return agent.Agent{}, false
+	}
+	r.logger.Info("true suc")
+	return ag, true
+}
 func (r *repository) AddAgent(ctx context.Context, agent *agent.Agent, cache *cache.Cache) error {
 	q := `
-	INSERT INTO public.agents (agent_address,status_code) 
-	VALUES ($1,$2) RETURNING id
+	INSERT INTO public.agents (agent_address,status_code,last_heartbeat) 
+	VALUES ($1,$2,$3) RETURNING id
 	`
 	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
-	if err := r.client.QueryRow(ctx, q, agent.Address, agent.Status).Scan(&agent.ID); err != nil {
+	if err := r.client.QueryRow(ctx, q, agent.Address, agent.Status, agent.LastHearBeat).Scan(&agent.ID); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.Is(err, pgErr) {
 			pgErr = err.(*pgconn.PgError)
@@ -248,15 +269,15 @@ func (r *repository) AddAgent(ctx context.Context, agent *agent.Agent, cache *ca
 	cache.Set(agent.ID, *agent)
 	return nil
 }
-func (r *repository) SetAgent(ctx context.Context, id, status string, cache *cache.Cache) error {
+func (r *repository) SetAgent(ctx context.Context, ag agent.Agent, cache *cache.Cache) error {
 	q := `UPDATE
-	public.agents SET status
-	= $1 WHERE id = $2`
+	public.agents SET (status,last_heartbeat)
+	= ($1,$2) WHERE id = $3`
 
 	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
-	r.client.Exec(ctx, q, id)
-	cache.Set(id, agent.Agent{ID: id, Status: status})
+	r.client.Exec(ctx, q, ag.Status, ag.LastHearBeat, ag.ID)
+	cache.Set(ag.ID, ag)
 	return nil
 }
 

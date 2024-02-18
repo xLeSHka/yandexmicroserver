@@ -3,7 +3,7 @@ CREATE TABLE expressions (
     expression VARCHAR(256) NOT NULL,
     expression_status VARCHAR(256) NOT NULL,
     created_at TIMESTAMP NOT NULL,
-	completed_at TIMESTAMP 
+	completed_at TIMESTAMP NOT NULL
 );
 CREATE TABLE operations (
     operation VARCHAR(1) NOT NULL,
@@ -13,6 +13,7 @@ CREATE TABLE agents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	agent_address VARCHAR(100) NOT NULL,
     status_code VARCHAR(256) NOT NULL
+	last_heartbeat TIMESTAMP NOT NULL
 );
 INSERT INTO public.agents (status_code) VALUES ($1) RETURNING id
 INSERT INTO 

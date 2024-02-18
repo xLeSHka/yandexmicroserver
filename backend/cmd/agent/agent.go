@@ -29,18 +29,6 @@ func main() {
 	}
 	heartBeatUrl := "http://" + cfg.HTTPServer.Host + ":" + cfg.OrchPort + "/setAgentStatus"
 	addAgentUrl := "http://" + cfg.HTTPServer.Host + ":" + cfg.OrchPort + "/addAgent"
-	// postgreSQLClient, err := postgresql.NewClient(context.TODO(), cfg.StorageConfig, logg)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// repository := db.NewRepository(postgreSQLClient, logg)
-
-	// mux.Handle("/", middleware.Recoverer(middleware.Logger(server.PostExpressionsHandler(ctx, logg, repository))))
-	// mux.Handle("/operations", middleware.Recoverer(middleware.Logger(server.PostOperationsHandler(ctx, logg, repository))))
-	// mux.Handle("/agents", middleware.Recoverer(middleware.Logger(server.PostAgentsHandler(ctx, logg, repository))))
-	// for i := 0; i < agCount; i++ {
-	// 	port := agentPort + i
-	// 	go func(port string) {
 	port := fmt.Sprintf("%d", agentPort)
 	errCh := make(chan struct{})
 	defer close(errCh)
@@ -48,7 +36,7 @@ func main() {
 	agentAddress := "http://localhost:" + port
 	client := &http.Client{}
 	ag := agent.Agent{Address: agentAddress, Status: "Ok"}
-
+	ag.LastHearBeat = time.Now()
 	ag.ID, err = app.AddAgentReq(agentCtxWithCancel, logg, ag, addAgentUrl, client)
 
 	if err != nil {
@@ -63,20 +51,13 @@ func main() {
 		case <-errCh:
 			Shutdown(agentCtxWithCancel, cancelCtx, logg, ag, heartBeatUrl, client, errCh)
 			return
-		default:
-			go func() {
-				for {
-					select {
-					case <-time.After(120 * time.Second):
-						app.AgentHeartBeat(agentCtxWithCancel, logg, ag, heartBeatUrl, client, errCh)
-					}
-				}
-			}()
-
+		case <-time.After(120 * time.Second):
+			ag.LastHearBeat = time.Now()
+			app.AgentHeartBeat(agentCtxWithCancel, logg, ag, heartBeatUrl, client, errCh)
 		}
 	}()
 	mux := http.NewServeMux()
-	mux.Handle("/", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.GetSubExprassion(agentCtxWithCancel, logg), logg)))
+	mux.Handle("/", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.GetSubExprassion(agentCtxWithCancel, logg, ag, heartBeatUrl, client), logg)))
 	log.Fatal(http.ListenAndServe(":"+port, mux))
 
 	// 	}(fmt.Sprintf("%d", port))
