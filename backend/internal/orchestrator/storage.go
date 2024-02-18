@@ -18,6 +18,7 @@ type Repository interface {
 	AddOperation(ctx context.Context, operaion *Operation, cache *cache.Cache) error
 	SetExecutionTime(ctx context.Context, operaion *Operation, cache *cache.Cache) error
 	GetAllAgents(ctx context.Context, cache *cache.Cache) ([]agent.Agent, error)
+	AddAgent(ctx context.Context, agent *agent.Agent, cache *cache.Cache) error
 	SetAgent(ctx context.Context, id, status string, cache *cache.Cache) error
 	DeleteAgent(ctx context.Context, id string, cache *cache.Cache) error
 }

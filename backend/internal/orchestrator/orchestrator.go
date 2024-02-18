@@ -11,6 +11,7 @@ type Expression struct {
 
 	CreatedTime time.Time `json:"created_at"` /* время создания запроса */
 
+	CompletedTime time.Time `json:"completed_at"` /* время выполнения запроса */
 	/*
 		Возможные варианты ответа:
 		*200. Выражение успешно принято, распаршено и принято к обработке

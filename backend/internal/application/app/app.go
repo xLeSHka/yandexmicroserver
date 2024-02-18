@@ -1,13 +1,21 @@
 package application
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"log"
 	"log/slog"
+	"net/http"
+	"sync"
 	"time"
 	"unicode"
 
 	"github.com/xleshka/distributedcalc/backend/internal/agent"
+	expparser "github.com/xleshka/distributedcalc/backend/internal/application/ExpParser"
 	"github.com/xleshka/distributedcalc/backend/internal/application/cache"
 	orch "github.com/xleshka/distributedcalc/backend/internal/orchestrator"
 )
@@ -16,12 +24,42 @@ var (
 	agentCache      *cache.Cache
 	operaionsCache  *cache.Cache
 	expressionCache *cache.Cache
+	agentChan       chan agent.Agent
 )
 
-func Initialize() {
+func Initialize(ahentCount int, ctx context.Context, logg *slog.Logger, rep orch.Repository) error {
 	agentCache = cache.NewCache()
 	operaionsCache = cache.NewCache()
 	expressionCache = cache.NewCache()
+	agentChan := make(chan agent.Agent, ahentCount)
+	_, err := AllOperations(ctx, logg, rep)
+	if err != nil {
+		log.Fatalf("%v", err)
+		return err
+	}
+
+	_, err = AllOperations(ctx, logg, rep)
+	if err != nil {
+		log.Fatalf("%v", err)
+		return err
+	}
+	_, err = AllAgents(ctx, logg, rep)
+	if err != nil {
+		log.Fatalf("%v", err)
+		return err
+	}
+	for _, a := range agentCache.GetAll() {
+		ag := a.(agent.Agent)
+		if ag.Status == "Error" {
+			continue
+		}
+		agentChan <- ag
+	}
+	if len(agentChan) == 0 {
+		log.Fatal("Nil agents running")
+		return errors.New("nil agents running")
+	}
+	return nil
 }
 func ValidExpression(expression string) bool {
 
@@ -46,31 +84,71 @@ func ValidExpression(expression string) bool {
 	}
 	return true
 }
-func AllExpressions(ctx context.Context, log *slog.Logger, rep orch.Repository) ([]orch.Expression, error) {
+
+func AllExpressions(ctx context.Context, log *slog.Logger, rep orch.Repository, client *http.Client) ([]orch.Expression, error) {
 	expressions := make([]orch.Expression, 0)
-	if len(expressionCache.Data) == 0 {
+	if len(expressionCache.GetAll()) == 0 {
 		rep.GetAllExpressions(ctx, expressionCache)
 	}
-	for _, expr := range expressionCache.Data {
+	for _, expr := range expressionCache.GetAll() {
 		expression, _ := expr.(orch.Expression)
 		expressions = append(expressions, expression)
 	}
 	return expressions, nil
 }
-func AddExpression(ctx context.Context, express orch.Expression, log *slog.Logger, rep orch.Repository) (orch.Expression, error) {
+func SetExpression(ctx context.Context, express *orch.Expression, log *slog.Logger, rep orch.Repository) error {
+	express.CompletedTime = time.Now()
+	err := rep.SetExpression(ctx, express, expressionCache)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func AddExpression(ctx context.Context, express *orch.Expression, log *slog.Logger, rep orch.Repository, client *http.Client) (*orch.Expression, error) {
 
 	expression, exist := rep.CheckExists(ctx, express.Expression)
 	if exist {
-		return expression, nil
+		if expression.Status == "wait" {
+			CalcExpression(ctx, log, express, rep, client, agentChan)
+		}
+		return &expression, nil
 	}
-	err := rep.Add(ctx, &express, expressionCache)
+	err := rep.Add(ctx, express, expressionCache)
 	if err != nil {
 		log.Error("failed add expression to bd")
-		return orch.Expression{}, err
+		return &orch.Expression{}, err
 	}
+	if express.Status == "wait" {
+		CalcExpression(ctx, log, express, rep, client, agentChan)
+	}
+
 	return express, nil
 }
-
+func CalcExpression(ctx context.Context, log *slog.Logger, expression *orch.Expression, rep orch.Repository, client *http.Client, agentChan chan agent.Agent) {
+	go func() {
+		expression.Status = "proccess"
+		err := SetExpression(ctx, expression, log, rep)
+		if err != nil {
+			expression.Status = "error"
+			SetExpression(ctx, expression, log, rep)
+			log.Error("failed calculate exprassion: %v", err)
+			return
+		}
+		res, err := expparser.ValidatedPostOrder(ctx, log, expression.Expression, client, agentChan)
+		mu := sync.Mutex{}
+		mu.Lock()
+		defer mu.Unlock()
+		if err != nil {
+			expression.Status = "error"
+			SetExpression(ctx, expression, log, rep)
+			log.Error("failed calculate exprassion: %v", err)
+			return
+		}
+		expression.Expression += fmt.Sprintf(" = %0.1f", res)
+		expression.Status = "calculated"
+		SetExpression(ctx, expression, log, rep)
+	}()
+}
 func AllOperations(ctx context.Context, log *slog.Logger, rep orch.Repository) ([]orch.Operation, error) {
 	operations := make([]orch.Operation, 0)
 	if len(operaionsCache.Data) == 0 {
@@ -90,11 +168,11 @@ func AllOperations(ctx context.Context, log *slog.Logger, rep orch.Repository) (
 		}
 	}
 
-	for _, operation := range operaionsCache.Data {
+	for _, operation := range operaionsCache.GetAll() {
 		op, _ := operation.(orch.Operation)
 		operations = append(operations, op)
 	}
-	log.Info("operations: ", operations)
+	log.Info(fmt.Sprintf("operations: %v", operations))
 	return operations, nil
 }
 func AddOperation(ctx context.Context, log *slog.Logger, operation orch.Operation, rep orch.Repository) error {
@@ -123,15 +201,19 @@ func AllAgents(ctx context.Context, log *slog.Logger, rep orch.Repository) ([]ag
 	}
 	for _, ag := range agentCache.Data {
 		a, _ := ag.(agent.Agent)
-		if a.Status == "500" {
+		if a.Status == "Error" {
 			go DeleteAgent(ctx, log, a.ID, rep)
-			continue
 		}
 		agents = append(agents, a)
 	}
 	return agents, nil
 }
+
 func SetAgent(ctx context.Context, log *slog.Logger, id, status string, rep orch.Repository) error {
+	if status == "Error" {
+		go DeleteAgent(ctx, log, id, rep)
+		return nil
+	}
 	err := rep.SetAgent(ctx, id, status, agentCache)
 	if err != nil {
 		log.Error(err.Error())
@@ -140,6 +222,52 @@ func SetAgent(ctx context.Context, log *slog.Logger, id, status string, rep orch
 	return nil
 }
 
+func AddAgent(ctx context.Context, log *slog.Logger, ag agent.Agent, rep orch.Repository) (string, error) {
+	err := rep.AddAgent(ctx, &ag, agentCache)
+	if err != nil {
+		return "", err
+	}
+	return ag.ID, nil
+}
+func AddAgentReq(ctx context.Context, log *slog.Logger, ag agent.Agent, url string, client *http.Client) (string, error) {
+
+	data, err := json.Marshal(ag)
+	if err != nil {
+		log.Error("failed marshal agent: %s, error: %v", ag.Address, err)
+		return "", err
+	}
+	r := bytes.NewReader(data)
+	resp, err := http.Post(url, "application/json", r)
+	if err != nil {
+		log.Error("failed req: %v", err)
+		return "", err
+	}
+	body, err := io.ReadAll(resp.Body)
+	defer resp.Body.Close()
+	if err != nil {
+		log.Error("failed read resp body: %v", err)
+		return "", err
+	}
+	log.Info(fmt.Sprintf("add agent: %s", string(body)))
+	return string(body), nil
+}
+func AgentHeartBeat(ctx context.Context, log *slog.Logger, ag agent.Agent, url string, client *http.Client, errCh chan struct{}) {
+	log.Info("AgentHeartBeat")
+	data, err := json.Marshal(ag)
+	if err != nil {
+		log.Error("failed marshal agent: %s, error: %v", ag.Address, err)
+		errCh <- struct{}{}
+		return
+	}
+	r := bytes.NewReader(data)
+	resp, err := http.Post(url, "application/json", r)
+	if err != nil {
+		log.Error("failed req: %v", err)
+		errCh <- struct{}{}
+		return
+	}
+	log.Info(fmt.Sprintf("heart beat: %s", resp.Status))
+}
 func timerStop(v time.Timer, ctx context.Context, id string, rep orch.Repository) error {
 	<-v.C
 	err := rep.DeleteAgent(ctx, id, agentCache)

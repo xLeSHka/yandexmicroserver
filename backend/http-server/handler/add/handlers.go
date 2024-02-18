@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/xleshka/distributedcalc/backend/internal/agent"
 	app "github.com/xleshka/distributedcalc/backend/internal/application/app"
 	resp "github.com/xleshka/distributedcalc/backend/internal/lib/api/response"
 	"github.com/xleshka/distributedcalc/backend/internal/lib/logger/sl"
@@ -24,7 +25,7 @@ type Response struct {
 	Result int `json:"result"`
 }
 
-func GetExpressionHandler(ctx context.Context, log *slog.Logger, rep orch.Repository) http.HandlerFunc {
+func GetExpressionHandler(ctx context.Context, log *slog.Logger, rep orch.Repository, client *http.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		if r.Method != http.MethodPost {
@@ -46,13 +47,14 @@ func GetExpressionHandler(ctx context.Context, log *slog.Logger, rep orch.Reposi
 			return
 		}
 
-		expression := orch.Expression{}
+		expression := &orch.Expression{}
 		expression.Expression = expr
 		t := time.Now()
 		expression.CreatedTime = t
+		expression.CompletedTime = t
 		expression.Status = "wait"
 
-		expression, err = app.AddExpression(ctx, expression, log, rep)
+		expression, err = app.AddExpression(ctx, expression, log, rep, client)
 		if err != nil {
 			log.Error("failed add expression to bd")
 			http.Error(w, fmt.Sprintf("failed add expression to bd: %v", err), http.StatusInternalServerError)
@@ -69,14 +71,14 @@ func GetExpressionHandler(ctx context.Context, log *slog.Logger, rep orch.Reposi
 	}
 }
 
-func PostExpressionsHandler(ctx context.Context, log *slog.Logger, rep orch.Repository) http.HandlerFunc {
+func PostExpressionsHandler(ctx context.Context, log *slog.Logger, rep orch.Repository, client *http.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			log.Error("bad get expressions method type")
 			http.Error(w, "bad get expressions method type", http.StatusBadRequest)
 			return
 		}
-		expressions, err := app.AllExpressions(ctx, log, rep)
+		expressions, err := app.AllExpressions(ctx, log, rep, client)
 		if err != nil {
 			log.Error(fmt.Sprintf("failed bd get expressions: %v", err))
 			http.Error(w, fmt.Sprintf("failed bd get expressions: %v", err), http.StatusInternalServerError)
@@ -86,6 +88,7 @@ func PostExpressionsHandler(ctx context.Context, log *slog.Logger, rep orch.Repo
 		if err := json.NewEncoder(w).Encode(expressions); err != nil {
 			log.Error(fmt.Sprintf("failed encode expressions: %v", err))
 			http.Error(w, fmt.Sprintf("failed encode expressions: %v", err), http.StatusInternalServerError)
+			return
 		}
 	}
 }
@@ -144,22 +147,101 @@ func GetOperationHandler(ctx context.Context, log *slog.Logger, rep orch.Reposit
 
 	}
 }
-
+func GetSubExprassion(ctx context.Context, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			log.Error("bad post subExprassion method type")
+			http.Error(w, "fab post subExprassion method type", http.StatusInternalServerError)
+			return
+		}
+		body, err := io.ReadAll(r.Body)
+		defer r.Body.Close()
+		if err != nil {
+			log.Error("failed read req body")
+			http.Error(w, "failed read req body", http.StatusInternalServerError)
+			return
+		}
+		w.Write(body)
+	}
+}
+func GetAddAgentHandler(ctx context.Context, log *slog.Logger, rep orch.Repository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			log.Error("bad post add agent method type")
+			http.Error(w, "bad post add agent method type", http.StatusInternalServerError)
+			return
+		}
+		body, err := io.ReadAll(r.Body)
+		defer r.Body.Close()
+		if err != nil {
+			log.Error("failed read req body: %v", err)
+			http.Error(w, "failed read req body", http.StatusInternalServerError)
+			return
+		}
+		var ag agent.Agent
+		err = json.Unmarshal(body, &ag)
+		if err != nil {
+			log.Error("failed unmarshal req body: %v", err)
+			http.Error(w, "failed unmarshal req body", http.StatusInternalServerError)
+			return
+		}
+		id, err := app.AddAgent(ctx, log, ag, rep)
+		if err != nil {
+			log.Error("%v", err)
+			http.Error(w, "failed add agent", http.StatusInternalServerError)
+			return
+		}
+		w.Write([]byte(id))
+	}
+}
+func GetAgentStatusHandler(ctx context.Context, log *slog.Logger, rep orch.Repository) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			log.Error("bad post agent status method type")
+			http.Error(w, "bad post agent status method type", http.StatusInternalServerError)
+			return
+		}
+		body, err := io.ReadAll(r.Body)
+		defer r.Body.Close()
+		if err != nil {
+			log.Error("failed read req body %v", err)
+			http.Error(w, "failed read req body", http.StatusInternalServerError)
+			return
+		}
+		var agent agent.Agent
+		err = json.Unmarshal(body, &agent)
+		if err != nil {
+			log.Error("failed unmarshal body")
+			http.Error(w, "failed unmarshal body", http.StatusInternalServerError)
+			return
+		}
+		err = app.SetAgent(ctx, log, agent.ID, agent.Status, rep)
+		if err != nil {
+			log.Error("failed set agent  status: %v", err)
+			http.Error(w, "failed set agent  status", http.StatusInternalServerError)
+			return
+		}
+		log.Info("agent status decoded", slog.Any("req", agent))
+	}
+}
 func PostAgentsHandler(ctx context.Context, log *slog.Logger, rep orch.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			log.Error("bad get agents method type")
 			http.Error(w, fmt.Sprintf("bad get agents method type"), http.StatusBadRequest)
+			return
 		}
 		agents, err := app.AllAgents(ctx, log, rep)
 		if err != nil {
 			log.Error(err.Error())
 			http.Error(w, fmt.Sprintf("failed get agents: %v", err), http.StatusInternalServerError)
+			return
 		}
 		w.Header().Set("Content-Type", "Application/json")
 		if err := json.NewEncoder(w).Encode(agents); err != nil {
 			log.Error(err.Error())
 			http.Error(w, fmt.Sprintf("failed encode agents to json: %v", err), http.StatusInternalServerError)
+			return
 		}
 	}
 }

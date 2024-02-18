@@ -130,19 +130,17 @@ func (r *repository) CheckExists(ctx context.Context, expression string) (orch.E
 
 func (r *repository) SetExpression(ctx context.Context, expression *orch.Expression, cache *cache.Cache) error {
 	q := `
-	UPDATE public.exprassions SET (expression,expression_status,created_at) 
-	= ($1,$2,$3) WHERE id = $4;
-		
+	UPDATE public.exprassions SET (expression,expression_status,completed_at) 
+	= ($1,$2,$3) WHERE id = $4;		
 	`
 
 	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
 	r.client.Exec(ctx, q, expression.Expression,
-		expression.Status, expression.CreatedTime, expression.Id)
+		expression.Status, expression.CompletedTime, expression.Id)
 	cache.Set(expression.Id, expression)
 	return nil
 }
-
 func (r *repository) GetAllOperations(ctx context.Context, cache *cache.Cache) ([]orch.Operation, error) {
 	q := `
 		SELECT operation, execution_time_by_milliseconds 
@@ -180,7 +178,7 @@ func (r *repository) AddOperation(ctx context.Context, operation *orch.Operation
 		VALUES ($1,$2)
 	`
 
-	r.logger.Info("SQL Query: %s", formatQuery(q))
+	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
 	r.client.QueryRow(ctx, q, operation.Operation, operation.ExecutionTimeByMilliseconds)
 	cache.Set(operation.Operation, *operation)
@@ -230,11 +228,11 @@ func (r *repository) GetAllAgents(ctx context.Context, cache *cache.Cache) ([]ag
 }
 func (r *repository) AddAgent(ctx context.Context, agent *agent.Agent, cache *cache.Cache) error {
 	q := `
-	INSERT INTO public.agents (status_code) 
-	VALUES ($1) RETURNING id
+	INSERT INTO public.agents (agent_address,status_code) 
+	VALUES ($1,$2) RETURNING id
 	`
-	r.logger.Info("SQL Query: %s", formatQuery(q))
-	if err := r.client.QueryRow(ctx, q, agent.Status).Scan(&agent.ID); err != nil {
+	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
+	if err := r.client.QueryRow(ctx, q, agent.Address, agent.Status).Scan(&agent.ID); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.Is(err, pgErr) {
 			pgErr = err.(*pgconn.PgError)
@@ -273,7 +271,7 @@ func (r *repository) DeleteAgent(ctx context.Context, id string, cache *cache.Ca
 		r.logger.Info(fmt.Sprintf("delete %s", row))
 
 	}
-	delete(cache.Data, id)
+	cache.Delete(id)
 	return nil
 }
 func NewRepository(client postgresql.Client, log *slog.Logger) orch.Repository {

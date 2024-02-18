@@ -6,12 +6,13 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 
-	"github.com/go-chi/chi/v5/middleware"
 	server "github.com/xleshka/distributedcalc/backend/http-server/handler/add"
+	"github.com/xleshka/distributedcalc/backend/http-server/middleware"
 	app "github.com/xleshka/distributedcalc/backend/internal/application/app"
 	"github.com/xleshka/distributedcalc/backend/internal/config"
-	orchestrator "github.com/xleshka/distributedcalc/backend/internal/orchestrator/db"
+	"github.com/xleshka/distributedcalc/backend/internal/orchestrator/db"
 	"github.com/xleshka/distributedcalc/backend/pkg/postgresql"
 )
 
@@ -22,33 +23,27 @@ func main() {
 	logg.Info(str)
 	logg.Debug("logger debg mode enabled")
 	ctx := context.Background()
+	client := &http.Client{}
 
 	postgreSQLClient, err := postgresql.NewClient(context.TODO(), cfg.StorageConfig, logg)
 	if err != nil {
-
+		log.Fatal(err)
 	}
-	repository := orchestrator.NewRepository(postgreSQLClient, logg)
-	app.Initialize()
-	_, err = app.AllExpressions(ctx, logg, repository)
+	repository := db.NewRepository(postgreSQLClient, logg)
+	agCount, err := strconv.Atoi(cfg.AgentCount)
 	if err != nil {
-		log.Fatalf("%v", err)
+		log.Fatal(err)
 	}
-
-	_, err = app.AllOperations(ctx, logg, repository)
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-	_, err = app.AllAgents(ctx, logg, repository)
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
+	app.Initialize(agCount, ctx, logg, repository)
 
 	mux := http.NewServeMux()
-	mux.Handle("/add", middleware.Recoverer(middleware.Logger(server.GetExpressionHandler(ctx, logg, repository))))
-	mux.Handle("/", middleware.Recoverer(middleware.Logger(server.PostExpressionsHandler(ctx, logg, repository))))
-	mux.Handle("/operations", middleware.Recoverer(middleware.Logger(server.PostOperationsHandler(ctx, logg, repository))))
-	mux.Handle("/agents", middleware.Recoverer(middleware.Logger(server.PostAgentsHandler(ctx, logg, repository))))
-	mux.Handle("/setOperation", middleware.Recoverer(middleware.Logger(server.GetOperationHandler(ctx, logg, repository))))
+	mux.Handle("/add", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.GetExpressionHandler(ctx, logg, repository, client), logg)))
+	mux.Handle("/", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.PostExpressionsHandler(ctx, logg, repository, client), logg)))
+	mux.Handle("/operations", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.PostOperationsHandler(ctx, logg, repository), logg)))
+	mux.Handle("/agents", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.PostAgentsHandler(ctx, logg, repository), logg)))
+	mux.Handle("/setOperation", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.GetOperationHandler(ctx, logg, repository), logg)))
+	mux.Handle("/setAgentStatus", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.GetAgentStatusHandler(ctx, logg, repository), logg)))
+	mux.Handle("/addAgent", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.GetAddAgentHandler(ctx, logg, repository), logg)))
 
 	log.Fatal(http.ListenAndServe(":"+cfg.HTTPServer.OrchPort, mux))
 }
