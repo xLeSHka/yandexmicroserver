@@ -13,13 +13,14 @@
    `curl -X GET http://localhost:8082/initialize`
  ## Post expression
  Добавить выражение, в скобках указывать выражение
- `curl -X POST -d "2 + 2" http://localhost:8082/add`
  > Обязательно пробелы между числами и операциями  
- ## Post operation`s executing time
+ ### `curl -X POST -d "2 + 2" http://localhost:8082/add` 
+ ## Post operation`s executing time 
  Выставить время выполнения операции
- - `name` - арифметическая операция
+ ### `curl -X POST -H 'Content-Type:application/json' -d "{""name"": ""*"", ""execution_time_by_milliseconds"": 3000}" "http://localhost:8082/setOperation" `
+ - `name` - арифметическая операция(`+` `-` `*` `/`)
  - `execution_time_by_milliseconds` - время выполнения операции в милисекундах
- `curl -X POST -H 'Content-Type:application/json' -d "{""name"": ""*"", ""execution_time_by_milliseconds"": 3000}" "http://localhost:8082/setOperation" ` `#0969DA`
+ 
  ## Get all expressions
  Получить все выражения, в виде json с полями 
  - `id` string - уникальный id выражения
