@@ -58,7 +58,7 @@ func Initialize(agentCount int, ctx context.Context, logg *slog.Logger, rep orch
 		return err
 	}
 
-	_, err = AllExpressions(ctx, logg, rep, client)
+	err = InitAllExpressions(ctx, logg, rep)
 	if err != nil {
 		log.Fatalf("%v", err)
 		return err
@@ -100,84 +100,89 @@ func ValidExpression(expression string) bool {
 // func CaclSubExprassion(Expression string, out chan<- float64, wg *sync.WaitGroup, log *slog.Logger) {
 // 	defer wg.Done()
 
-// 	members := strings.Fields(Expression)
-// 	log.Info("CaclSubExprassion")
-// 	switch members[1] {
-// 	case "+":
-// 		data, _ := operaionsCache.Get("+")
-// 		plusOper := data.(orch.Operation)
-// 		timer := time.NewTimer(time.Duration(plusOper.ExecutionTimeByMilliseconds * int(time.Millisecond)))
-// 		ExecutionTimer(*timer)
-// 		left, err := strconv.ParseFloat(members[0], 64)
-// 		if err != nil {
-// 			log.Error("failed parse: %v", err)
-// 			return
-// 		}
-// 		right, err := strconv.ParseFloat(members[0], 64)
-// 		if err != nil {
-// 			log.Error("failed parse: %v", err)
-// 			return
-// 		}
-// 		out <- left + right
-// 	case "-":
-// 		data, _ := operaionsCache.Get("-")
-// 		minusOper := data.(orch.Operation)
-// 		timer := time.NewTimer(time.Duration(minusOper.ExecutionTimeByMilliseconds * int(time.Millisecond)))
-// 		ExecutionTimer(*timer)
-// 		left, err := strconv.ParseFloat(members[0], 64)
-// 		if err != nil {
-// 			log.Error("failed parse: %v", err)
-// 			return
-// 		}
-// 		right, err := strconv.ParseFloat(members[0], 64)
-// 		if err != nil {
-// 			log.Error("failed parse: %v", err)
-// 			return
-// 		}
-// 		out <- left - right
-// 	case "*":
-// 		data, _ := operaionsCache.Get("*")
-// 		miltiplyOper := data.(orch.Operation)
-// 		timer := time.NewTimer(time.Duration(miltiplyOper.ExecutionTimeByMilliseconds * int(time.Millisecond)))
-// 		ExecutionTimer(*timer)
-// 		left, err := strconv.ParseFloat(members[0], 64)
-// 		if err != nil {
-// 			log.Error("failed parse: %v", err)
-// 			return
-// 		}
-// 		right, err := strconv.ParseFloat(members[0], 64)
-// 		if err != nil {
-// 			log.Error("failed parse: %v", err)
-// 			return
-// 		}
-// 		out <- left * right
-// 	case "/":
-// 		data, _ := operaionsCache.Get("/")
-// 		divideOper := data.(orch.Operation)
-// 		timer := time.NewTimer(time.Duration(divideOper.ExecutionTimeByMilliseconds * int(time.Millisecond)))
-// 		ExecutionTimer(*timer)
-// 		left, err := strconv.ParseFloat(members[0], 64)
-// 		if err != nil {
-// 			log.Error("failed parse: %v", err)
-// 			return
-// 		}
-// 		right, err := strconv.ParseFloat(members[0], 64)
-// 		if err != nil {
-// 			log.Error("failed parse: %v", err)
-// 			return
-// 		}
-// 		out <- left / right
-// 	}
-// }
-// func ExecutionTimer(v time.Timer) {
-// 	<-v.C
-// }
-
-func AllExpressions(ctx context.Context, log *slog.Logger, rep orch.Repository, client *http.Client) ([]orch.Expression, error) {
-	expressions := make([]orch.Expression, 0)
-	if len(expressionCache.Data) == 0 {
-		rep.GetAllExpressions(ctx, expressionCache)
+//		members := strings.Fields(Expression)
+//		log.Info("CaclSubExprassion")
+//		switch members[1] {
+//		case "+":
+//			data, _ := operaionsCache.Get("+")
+//			plusOper := data.(orch.Operation)
+//			timer := time.NewTimer(time.Duration(plusOper.ExecutionTimeByMilliseconds * int(time.Millisecond)))
+//			ExecutionTimer(*timer)
+//			left, err := strconv.ParseFloat(members[0], 64)
+//			if err != nil {
+//				log.Error("failed parse: %v", err)
+//				return
+//			}
+//			right, err := strconv.ParseFloat(members[0], 64)
+//			if err != nil {
+//				log.Error("failed parse: %v", err)
+//				return
+//			}
+//			out <- left + right
+//		case "-":
+//			data, _ := operaionsCache.Get("-")
+//			minusOper := data.(orch.Operation)
+//			timer := time.NewTimer(time.Duration(minusOper.ExecutionTimeByMilliseconds * int(time.Millisecond)))
+//			ExecutionTimer(*timer)
+//			left, err := strconv.ParseFloat(members[0], 64)
+//			if err != nil {
+//				log.Error("failed parse: %v", err)
+//				return
+//			}
+//			right, err := strconv.ParseFloat(members[0], 64)
+//			if err != nil {
+//				log.Error("failed parse: %v", err)
+//				return
+//			}
+//			out <- left - right
+//		case "*":
+//			data, _ := operaionsCache.Get("*")
+//			miltiplyOper := data.(orch.Operation)
+//			timer := time.NewTimer(time.Duration(miltiplyOper.ExecutionTimeByMilliseconds * int(time.Millisecond)))
+//			ExecutionTimer(*timer)
+//			left, err := strconv.ParseFloat(members[0], 64)
+//			if err != nil {
+//				log.Error("failed parse: %v", err)
+//				return
+//			}
+//			right, err := strconv.ParseFloat(members[0], 64)
+//			if err != nil {
+//				log.Error("failed parse: %v", err)
+//				return
+//			}
+//			out <- left * right
+//		case "/":
+//			data, _ := operaionsCache.Get("/")
+//			divideOper := data.(orch.Operation)
+//			timer := time.NewTimer(time.Duration(divideOper.ExecutionTimeByMilliseconds * int(time.Millisecond)))
+//			ExecutionTimer(*timer)
+//			left, err := strconv.ParseFloat(members[0], 64)
+//			if err != nil {
+//				log.Error("failed parse: %v", err)
+//				return
+//			}
+//			right, err := strconv.ParseFloat(members[0], 64)
+//			if err != nil {
+//				log.Error("failed parse: %v", err)
+//				return
+//			}
+//			out <- left / right
+//		}
+//	}
+//
+//	func ExecutionTimer(v time.Timer) {
+//		<-v.C
+//	}
+func InitAllExpressions(ctx context.Context, log *slog.Logger, rep orch.Repository) error {
+	rep.GetAllExpressions(ctx, expressionCache)
+	for _, expr := range expressionCache.Data {
+		expression, _ := expr.(orch.Expression)
+		go CalcExpression(ctx, log, expression, rep)
 	}
+	return nil
+}
+func AllExpressions(ctx context.Context, log *slog.Logger, rep orch.Repository) ([]orch.Expression, error) {
+	expressions := make([]orch.Expression, 0)
 	for _, expr := range expressionCache.Data {
 		expression, _ := expr.(orch.Expression)
 		expressions = append(expressions, expression)
@@ -195,7 +200,7 @@ func SetExpression(ctx context.Context, express *orch.Expression, log *slog.Logg
 	}
 	return nil
 }
-func AddExpression(ctx context.Context, express *orch.Expression, log *slog.Logger, rep orch.Repository, client *http.Client) (*orch.Expression, error) {
+func AddExpression(ctx context.Context, express *orch.Expression, log *slog.Logger, rep orch.Repository) (*orch.Expression, error) {
 
 	expression, exist := rep.CheckExists(ctx, express.Expression)
 	if exist {
@@ -217,16 +222,21 @@ func AddExpression(ctx context.Context, express *orch.Expression, log *slog.Logg
 	return express, nil
 }
 func CalcExpression(ctx context.Context, log *slog.Logger, expression orch.Expression, rep orch.Repository) {
-
+	defer func() {
+		if err := recover(); err != nil {
+			log.Error("failed calculate exprassion: %v", err)
+			expression.Status = "wait"
+			err := SetExpression(ctx, &expression, log, rep)
+			if err != nil {
+				log.Error("failed calculate exprassion: %v", err)
+				return
+			}
+		}
+	}()
 	expression.Status = "proccess"
 
 	err := SetExpression(ctx, &expression, log, rep)
 	if err != nil {
-		expression.Status = "error"
-		err := rep.SetExpression(ctx, expression, expressionCache)
-		if err != nil {
-			return
-		}
 		log.Error("failed calculate exprassion: %v", err)
 		return
 	}
@@ -241,7 +251,7 @@ func CalcExpression(ctx context.Context, log *slog.Logger, expression orch.Expre
 		log.Error("failed calculate exprassion: %v", err)
 		return
 	}
-	expression.Expression += fmt.Sprintf(" = %0.1f", res)
+	expression.Expression += fmt.Sprintf(" = %0.7f", res)
 	expression.Status = "calculated"
 	err = SetExpression(ctx, &expression, log, rep)
 	if err != nil {

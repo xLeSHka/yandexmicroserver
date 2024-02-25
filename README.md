@@ -24,7 +24,7 @@ in cmd
 ## Post operation`s executing time 
 Выставить время выполнения операции
 
-### `curl -X POST -H 'Content-Type:application/json' -d "{""name"": ""*"", ""execution_time_by_milliseconds"": 3000}" "http://localhost:8082/setOperation" `
+### `curl -X POST -H 'Content-Type:application/json' -d "{""name"": ""*"", ""execution_time_by_milliseconds"": 3000}" "http://localhost:8082/setOperation"`
 
 - `name` `string` - арифметическая операция(`+` `-` `*` `/`)
 - `execution_time_by_milliseconds` `int` - время выполнения операции в милисекундах
@@ -34,7 +34,7 @@ in cmd
 ### `curl -X GET http://localhost:8082/`
 - `id` `string` - уникальный id выражения
 - `expression` `string` - выражение
-- `expression_status` `string` - статус выражения(wait, proccess, completed)
+- `expression_status` `string` - статус выражения(proccess, completed)
 - `created_at` `time.Time` - когда было создано выражение
 - `completed_at` `time.Time` - когда выражение было посчитанно
 

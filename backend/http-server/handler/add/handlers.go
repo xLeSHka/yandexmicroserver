@@ -54,7 +54,7 @@ func GetExpressionHandler(ctx context.Context, log *slog.Logger, rep orch.Reposi
 		expression.CompletedTime = t
 		expression.Status = "wait"
 
-		expression, err = app.AddExpression(ctx, expression, log, rep, client)
+		expression, err = app.AddExpression(ctx, expression, log, rep)
 		if err != nil {
 			log.Error("failed add expression to bd")
 			http.Error(w, fmt.Sprintf("failed add expression to bd: %v", err), http.StatusInternalServerError)
@@ -78,7 +78,7 @@ func PostExpressionsHandler(ctx context.Context, log *slog.Logger, rep orch.Repo
 			http.Error(w, "bad get expressions method type", http.StatusBadRequest)
 			return
 		}
-		expressions, err := app.AllExpressions(ctx, log, rep, client)
+		expressions, err := app.AllExpressions(ctx, log, rep)
 		if err != nil {
 			log.Error(fmt.Sprintf("failed bd get expressions: %v", err))
 			http.Error(w, fmt.Sprintf("failed bd get expressions: %v", err), http.StatusInternalServerError)
