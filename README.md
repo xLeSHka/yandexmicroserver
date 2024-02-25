@@ -13,14 +13,28 @@
    `curl -X GET http://localhost:8082/initialize`
  ## Post expression
  Добавить выражение, в скобках указывать выражение
- > Обязательно пробелы между числами и операциями 
-`curl -X POST -d "2 + 2" http://localhost:8082/add`
+ `curl -X POST -d "2 + 2" http://localhost:8082/add`
+ > Обязательно пробелы между числами и операциями  
  ## Post operation`s executing time
- Выставить время выполнения операции, где name - арифметическая операция, execution_time_by_milliseconds - время выполнения операции в милисекундах
-
+ Выставить время выполнения операции
+ - `name` - арифметическая операция
+ - `execution_time_by_milliseconds` - время выполнения операции в милисекундах
  `curl -X POST -H 'Content-Type:application/json' -d "{""name"": ""*"", ""execution_time_by_milliseconds"": 3000}" "http://localhost:8082/setOperation" ` `#0969DA`
-
-
-curl -X POST -d "2 + 2" http://localhost:8082/add
-curl -X GET http://localhost:8082/initialize
+ ## Get all expressions
+ Получить все выражения, в виде json с полями 
+ - `id` string - уникальный id выражения
+ - `expression`string - выражение
+ - `expression_status`string - статус выражения(wait, proccess, completed)
+ - `created_at` time.Time - когда было создано выражение
+ - `completed_at` time.Time - когда выражение было посчитанно
+ ## Get all operations
+ Получить все операции, в виде json c полями
+ - `name` string - арифметическая операция
+ - `execution_time_by_milliseconds` time.Duration - время выполнения операции в милисекундах
+ ## Get all agents
+ Получить всех агентов, в виде json c полями
+ - `id` string - уникальный id агента
+ - `address` string - адресс агента
+ - `status_code` string - статус агента
+ - `last_heartbeat` time.Time - время последнего heartbeat`a агента
 curl -X GET http://localhost:8082/
