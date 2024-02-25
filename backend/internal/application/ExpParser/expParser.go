@@ -100,7 +100,7 @@ func CalcExpression(node *Node, log *slog.Logger, operaionsCache *cache.Cache, w
 	}
 	wg1.Wait()
 	if node.Operation != "" {
-		subExpression := fmt.Sprintf("%0.1f %s %0.1f", node.Left.Value, node.Operation, node.Right.Value)
+		subExpression := fmt.Sprintf("%0.7f %s %0.7f", node.Left.Value, node.Operation, node.Right.Value)
 		res, err := Calc(subExpression, log, operaionsCache)
 		if err != nil {
 			cancelCtx()
