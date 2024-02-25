@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	server "github.com/xleshka/distributedcalc/backend/http-server/handler/add"
-	"github.com/xleshka/distributedcalc/backend/http-server/middleware"
 	"github.com/xleshka/distributedcalc/backend/internal/agent"
 	app "github.com/xleshka/distributedcalc/backend/internal/application/app"
 	"github.com/xleshka/distributedcalc/backend/internal/config"
@@ -57,7 +55,7 @@ func main() {
 		}
 	}()
 	mux := http.NewServeMux()
-	mux.Handle("/", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.GetSubExprassion(agentCtxWithCancel, logg, ag, heartBeatUrl, client), logg)))
+	// mux.Handle("/", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.GetSubExprassion(agentCtxWithCancel, logg, ag, heartBeatUrl, client), logg)))
 	log.Fatal(http.ListenAndServe(":"+port, mux))
 
 	// 	}(fmt.Sprintf("%d", port))

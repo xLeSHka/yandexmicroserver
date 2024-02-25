@@ -10,10 +10,9 @@ import (
 	"time"
 
 	"github.com/xleshka/distributedcalc/backend/internal/agent"
-	expparser "github.com/xleshka/distributedcalc/backend/internal/application/ExpParser"
 	app "github.com/xleshka/distributedcalc/backend/internal/application/app"
 	resp "github.com/xleshka/distributedcalc/backend/internal/lib/api/response"
-	"github.com/xleshka/distributedcalc/backend/internal/lib/logger/sl"
+	"github.com/xleshka/distributedcalc/backend/internal/lib/api/response/logger/sl"
 	orch "github.com/xleshka/distributedcalc/backend/internal/orchestrator"
 )
 
@@ -148,39 +147,41 @@ func GetOperationHandler(ctx context.Context, log *slog.Logger, rep orch.Reposit
 
 	}
 }
-func GetSubExprassion(ctx context.Context, log *slog.Logger, ag agent.Agent, heartBeatUrl string, client *http.Client) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			log.Error("bad post subExprassion method type")
-			http.Error(w, "bad post subExprassion method type", http.StatusInternalServerError)
-			return
-		}
-		body, err := io.ReadAll(r.Body)
-		defer r.Body.Close()
-		if err != nil {
-			log.Error("failed read req body")
-			http.Error(w, "failed read req body", http.StatusInternalServerError)
-			return
-		}
-		var expr expparser.SubExpression
-		err = json.Unmarshal(body, &expr)
-		if err != nil {
-			log.Error(err.Error())
-			return
-		}
 
-		var res string
-		errCh := make(chan struct{})
-		ag.Status = "Busy"
-		app.AgentHeartBeat(ctx, log, ag, heartBeatUrl, client, errCh)
-		res = app.Cacl(expr.Expression, log)
-		ag.Status = "Ok"
-		app.AgentHeartBeat(ctx, log, ag, heartBeatUrl, client, errCh)
+// func GetSubExprassion(ctx context.Context, log *slog.Logger, ag agent.Agent, heartBeatUrl string, client *http.Client) http.HandlerFunc {
+// 	return func(w http.ResponseWriter, r *http.Request) {
+// 		if r.Method != http.MethodPost {
+// 			log.Error("bad post subExprassion method type")
+// 			http.Error(w, "bad post subExprassion method type", http.StatusInternalServerError)
+// 			return
+// 		}
+// 		body, err := io.ReadAll(r.Body)
+// 		defer r.Body.Close()
+// 		if err != nil {
+// 			log.Error("failed read req body")
+// 			http.Error(w, "failed read req body", http.StatusInternalServerError)
+// 			return
+// 		}
 
-		log.Info(fmt.Sprintf("Calc sub expression %0.1f", res))
-		w.Write([]byte(res))
-	}
-}
+// 		var expr expparser.SubExpression
+
+//			err = json.Unmarshal(body, &expr)
+//			if err != nil {
+//				log.Error(err.Error())
+//				return
+//			}
+//			errCh := make(chan struct{})
+//			var res string
+//			ag.Status = "Busy"
+//			app.AgentHeartBeat(ctx, log, ag, heartBeatUrl, client, errCh)
+//			res = app.Cacl(expr.Expression, log)
+//			ag.Status = "Ok"
+//			app.AgentHeartBeat(ctx, log, ag, heartBeatUrl, client, errCh)
+//			close(errCh)
+//			log.Info(fmt.Sprintf("Calc sub expression %s", res))
+//			w.Write([]byte(res))
+//		}
+//	}
 func GetAddAgentHandler(ctx context.Context, log *slog.Logger, rep orch.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {

@@ -130,7 +130,7 @@ func (r *repository) CheckExists(ctx context.Context, expression string) (orch.E
 
 func (r *repository) SetExpression(ctx context.Context, expression orch.Expression, cache *cache.Cache) error {
 	q := `
-	UPDATE public.exprassions SET (expression,expression_status,completed_at) 
+	UPDATE public.expressions SET (expression,expression_status,completed_at) 
 	= ($1,$2,$3) WHERE id = $4;		
 	`
 
@@ -200,7 +200,10 @@ func (r *repository) SetExecutionTime(ctx context.Context, operaion *orch.Operat
 }
 
 func (r *repository) GetAllAgents(ctx context.Context, cache *cache.Cache) ([]agent.Agent, error) {
-	q := `SELECT id,agent_address,status_code,last_heartbeat FROM public.agents`
+	q := `SELECT 
+	id,agent_address,status_code,last_heartbeat 
+	FROM public.agents
+	`
 
 	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
@@ -217,7 +220,7 @@ func (r *repository) GetAllAgents(ctx context.Context, cache *cache.Cache) ([]ag
 			r.logger.Error(err.Error())
 			return nil, err
 		}
-		cache.Set(agent.ID, agent)
+		cache.Set(agent.Address, agent)
 		agents = append(agents, agent)
 	}
 	if err := rows.Err(); err != nil {
@@ -228,14 +231,14 @@ func (r *repository) GetAllAgents(ctx context.Context, cache *cache.Cache) ([]ag
 }
 
 func (r *repository) ChechIfExist(ctx context.Context, agnt agent.Agent) (agent.Agent, bool) {
-	q := `SELECT id,agent_address,status_code ,last_heartbeat
-	FROM public.Agents WHERE agent_address = $1`
+	q := `SELECT id,status_code, last_heartbeat
+	FROM public.agents WHERE agent_address = $1`
 
 	r.logger.Info("SQL Query %s", formatQuery(q))
 
 	var ag agent.Agent
 
-	err := r.client.QueryRow(ctx, q, agnt.Address).Scan(&ag.ID, &ag.Address, &ag.Status, &ag.LastHearBeat)
+	err := r.client.QueryRow(ctx, q, agnt.Address).Scan(&ag.ID, &ag.Status, &ag.LastHearBeat)
 	if err == sql.ErrNoRows {
 		r.logger.Info("false suc")
 		return agent.Agent{}, false
@@ -266,33 +269,33 @@ func (r *repository) AddAgent(ctx context.Context, agent *agent.Agent, cache *ca
 		return err
 
 	}
-	cache.Set(agent.ID, *agent)
+	cache.Set(agent.Address, *agent)
 	return nil
 }
 func (r *repository) SetAgent(ctx context.Context, ag agent.Agent, cache *cache.Cache) error {
 	q := `UPDATE
-	public.agents SET (status,last_heartbeat)
+	public.agents SET (status_code,last_heartbeat)
 	= ($1,$2) WHERE id = $3`
 
 	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
 	r.client.Exec(ctx, q, ag.Status, ag.LastHearBeat, ag.ID)
-	cache.Set(ag.ID, ag)
+	cache.Set(ag.Address, ag)
 	return nil
 }
 
-func (r *repository) DeleteAgent(ctx context.Context, id string, cache *cache.Cache) error {
+func (r *repository) DeleteAgent(ctx context.Context, address string, cache *cache.Cache) error {
 	q := `DELETE FROM public.agents 
-		WHERE id = $1 
+		WHERE agent_address = $1 
 	`
 	r.logger.Info(fmt.Sprintf("SQL Query: %s", formatQuery(q)))
 
-	row := r.client.QueryRow(ctx, q, id)
+	row := r.client.QueryRow(ctx, q, address)
 	if row != nil {
 		r.logger.Info(fmt.Sprintf("delete %s", row))
 
 	}
-	cache.Delete(id)
+	cache.Delete(address)
 	return nil
 }
 func NewRepository(client postgresql.Client, log *slog.Logger) orch.Repository {

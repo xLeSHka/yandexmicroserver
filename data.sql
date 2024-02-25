@@ -12,24 +12,11 @@ CREATE TABLE operations (
 CREATE TABLE agents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	agent_address VARCHAR(100) NOT NULL,
-    status_code VARCHAR(256) NOT NULL
+    status_code VARCHAR(256) NOT NULL,
 	last_heartbeat TIMESTAMP NOT NULL
 );
-INSERT INTO public.agents (status_code) VALUES ($1) RETURNING id
-INSERT INTO 
-		public.operations (execution_time_by_milliseconds) 
-		VALUES (1000) WHERE operation = '+';
-INSERT INTO 
-		public.operations (operation,execution_time_by_milliseconds) 
-		VALUES (1000);
-INSERT INTO 
-		public.operations (operation,execution_time_by_milliseconds) 
-		VALUES (1000);
-INSERT INTO 
-		public.operations (operation,execution_time_by_milliseconds) 
-		VALUES (1000);
-UPDATE public.exprassions SET (expression,expression_status,created_at) 
-		= ($1,$2,$3) WHERE id = $4;
-        UPDATE
-		public.operations SET execution_time_by_milliseconds
-		= $1 WHERE operation = $2
+UPDATE
+	public.operations SET execution_time_by_milliseconds
+	= $1 WHERE operation = $2
+UPDATE public.expressions SET (expression,expression_status,completed_at) 
+	= ($1,$2,$3) WHERE id = $4;		
