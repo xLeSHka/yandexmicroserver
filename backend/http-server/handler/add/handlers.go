@@ -32,6 +32,7 @@ func GetExpressionHandler(ctx context.Context, log *slog.Logger, rep orch.Reposi
 			http.Error(w, "bad post expression method type", http.StatusBadRequest)
 			return
 		}
+		app.CORSPOST(w, r)
 
 		body, err := io.ReadAll(r.Body)
 		defer r.Body.Close()
@@ -78,6 +79,8 @@ func PostExpressionsHandler(ctx context.Context, log *slog.Logger, rep orch.Repo
 			http.Error(w, "bad get expressions method type", http.StatusBadRequest)
 			return
 		}
+		app.CORSGET(w, r)
+
 		expressions, err := app.AllExpressions(ctx, log, rep)
 		if err != nil {
 			log.Error(fmt.Sprintf("failed bd get expressions: %v", err))
@@ -100,6 +103,7 @@ func PostOperationsHandler(ctx context.Context, log *slog.Logger, rep orch.Repos
 			http.Error(w, "ad method get operations", http.StatusBadRequest)
 			return
 		}
+		app.CORSGET(w, r)
 		operations, err := app.AllOperations(ctx, log, rep)
 		if err != nil {
 			log.Error(fmt.Sprintf("failed bd get operaions: %v", err))
@@ -122,6 +126,8 @@ func GetOperationHandler(ctx context.Context, log *slog.Logger, rep orch.Reposit
 			http.Error(w, "bad post expression method type", http.StatusBadRequest)
 			return
 		}
+		app.CORSPOST(w, r)
+
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			log.Error("failed read req body", sl.Err(err))
@@ -189,6 +195,7 @@ func GetAddAgentHandler(ctx context.Context, log *slog.Logger, rep orch.Reposito
 			http.Error(w, "bad post add agent method type", http.StatusInternalServerError)
 			return
 		}
+
 		body, err := io.ReadAll(r.Body)
 		defer r.Body.Close()
 		if err != nil {
@@ -250,6 +257,8 @@ func PostAgentsHandler(ctx context.Context, log *slog.Logger, rep orch.Repositor
 			http.Error(w, "bad get agents method type", http.StatusBadRequest)
 			return
 		}
+		app.CORSGET(w, r)
+
 		agents, err := app.AllAgents(ctx, log, rep)
 		if err != nil {
 			log.Error(err.Error())
