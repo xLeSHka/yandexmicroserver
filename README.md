@@ -1,5 +1,8 @@
-# yandexmicroserver
+# microserver
 Distributed calculator of arithmetic expressions
+
+PRESENTATION https://prezi.com/view/XDFz10zV48ZefHZsaBfG/
+
 
 ## Starting
 
@@ -7,11 +10,12 @@ Distributed calculator of arithmetic expressions
 in terminal 
 #### `go run .\backend\cmd\app\main.go` 
 
-### Step 2
+### Step 2 and 3
 in terminal
 #### `go run .\backend\cmd\agent\agent.go` 
+#### `go run .\backend\cmd\agent1\agent1.go` 
 
-### Step 3
+### Step 4
 in cmd
 #### `curl -X GET http://localhost:8082/initialize`
 
@@ -31,7 +35,7 @@ in cmd
  
 ## Get all expressions
 Получить все выражения, в виде json с полями 
-### `curl -X GET http://localhost:8082/`
+### `curl -X GET http://localhost:8082/expressions`
 - `id` `string` - уникальный id выражения
 - `expression` `string` - выражение
 - `expression_status` `string` - статус выражения(proccess, completed)
