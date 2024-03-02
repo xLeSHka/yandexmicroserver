@@ -2,7 +2,6 @@ package orchestrator
 
 import (
 	"context"
-	"errors"
 
 	"github.com/xleshka/distributedcalc/backend/internal/agent"
 	"github.com/xleshka/distributedcalc/backend/internal/application/cache"
@@ -23,7 +22,3 @@ type Repository interface {
 	SetAgent(ctx context.Context, ag agent.Agent, cache *cache.Cache) error
 	DeleteAgent(ctx context.Context, id string, cache *cache.Cache) error
 }
-
-var (
-	ErrExpressionExists = errors.New("expression exist")
-)
