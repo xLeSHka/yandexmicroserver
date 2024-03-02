@@ -11,19 +11,9 @@ import (
 
 	"github.com/xleshka/distributedcalc/backend/internal/agent"
 	app "github.com/xleshka/distributedcalc/backend/internal/application/app"
-	resp "github.com/xleshka/distributedcalc/backend/internal/lib/api/response"
 	"github.com/xleshka/distributedcalc/backend/internal/lib/api/response/logger/sl"
 	orch "github.com/xleshka/distributedcalc/backend/internal/orchestrator"
 )
-
-type Request struct {
-	ID     int `json:"id"`
-	Status int `json:"status"`
-}
-type Response struct {
-	resp.Response
-	Result int `json:"result"`
-}
 
 func GetExpressionHandler(ctx context.Context, log *slog.Logger, rep orch.Repository, client *http.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
