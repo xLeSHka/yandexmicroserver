@@ -37,7 +37,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/initialize", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.AgentsInitializeHandler(agCount, ctx, logg, repository, client), logg)))
 	mux.Handle("/add", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.GetExpressionHandler(ctx, logg, repository, client), logg)))
-	mux.Handle("/", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.PostExpressionsHandler(ctx, logg, repository, client), logg)))
+	mux.Handle("/expressions", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.PostExpressionsHandler(ctx, logg, repository, client), logg)))
 	mux.Handle("/operations", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.PostOperationsHandler(ctx, logg, repository), logg)))
 	mux.Handle("/agents", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.PostAgentsHandler(ctx, logg, repository), logg)))
 	mux.Handle("/setOperation", middleware.RecoveryMiddleware(middleware.LoggingMiddleware(server.GetOperationHandler(ctx, logg, repository), logg)))
