@@ -8,12 +8,11 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
-// internal/config/config.go
-
 type Config struct {
 	HTTPServer    `yaml:"httpmicroserver"`
 	StorageConfig `yaml:"storage"`
 }
+
 type StorageConfig struct {
 	Username    string `json:"username"`
 	Password    string `json:"password"`
@@ -28,10 +27,7 @@ type HTTPServer struct {
 	OrchPort   string `yaml:"orch_port" env-default:"8082"`
 	AgentPort  string `yaml:"agent_port" env-default:"3030"`
 	AgentPort1 string `yaml:"agent_port1" env-default:"3031"`
-	AgentPort2 string `yaml:"agent_port2" env-default:"3032"`
-	AgentPort3 string `yaml:"agent_port3" env-default:"3033"`
-	AgentPort4 string `yaml:"agent_port4" env-default:"3034"`
-	AgentCount string `yaml:"agent_count" env-default:"5"`
+	AgentCount string `yaml:"agent_count" env-default:"2"`
 }
 
 var instance *Config
