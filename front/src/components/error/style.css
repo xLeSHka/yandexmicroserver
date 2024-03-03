@@ -1,0 +1,41 @@
+.error {
+	color: #ff6347;
+	font-size: 48px;
+	text-align: center;
+	text-transform: uppercase;
+	padding: 20px;
+	border: 2px solid #ff6347;
+	border-radius: 10px;
+	box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+	transition: transform 0.3s ease-in-out;
+	transition: box-shadow 0.3s ease-in-out;
+	transition: font-family 0.3s ease-in-out;
+	cursor: url('./glove-cursor.svg'), auto;
+}
+
+.error:hover {
+	transform: scale(1.1);
+	animation: shake 0.5s linear infinite;
+}
+
+@keyframes shake {
+	0% {
+		transform: translateX(0);
+	}
+	25% {
+		transform: translateX(5px);
+	}
+	50% {
+		transform: translateX(-5px);
+	}
+	75% {
+		transform: translateX(5px);
+	}
+	100% {
+		transform: translateX(0);
+	}
+}
+
+.error:hover {
+	box-shadow: 0 0 20px rgba(255, 99, 71, 0.5);
+}

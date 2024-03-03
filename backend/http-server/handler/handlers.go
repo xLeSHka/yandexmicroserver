@@ -11,7 +11,7 @@ import (
 
 	"github.com/xleshka/distributedcalc/backend/internal/agent"
 	app "github.com/xleshka/distributedcalc/backend/internal/application/app"
-	"github.com/xleshka/distributedcalc/backend/internal/lib/api/response/logger/sl"
+	sl "github.com/xleshka/distributedcalc/backend/internal/lib/api"
 	orch "github.com/xleshka/distributedcalc/backend/internal/orchestrator"
 )
 

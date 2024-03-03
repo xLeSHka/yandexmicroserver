@@ -67,28 +67,10 @@ func Initialize(agentCount int, ctx context.Context, logg *slog.Logger, rep orch
 	return nil
 }
 func CORSPOST(w http.ResponseWriter, r *http.Request) {
-	// Устанавливаем заголовки CORS
-	w.Header().Set("Access-Control-Allow-Origin", "*")              // Разрешить запросы от всех доменов
-	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Разрешить GET и OPTIONS запросы
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")  // Разрешить заголовок Content-Type
 
-	// Проверяем метод запроса
-	if r.Method == "OPTIONS" {
-		// Отправляем пустой ответ для предварительного запроса OPTIONS
-		w.WriteHeader(http.StatusOK)
-	}
 }
 func CORSGET(w http.ResponseWriter, r *http.Request) {
-	// Устанавливаем заголовки CORS
-	w.Header().Set("Access-Control-Allow-Origin", "*")             // Разрешить запросы от всех доменов
-	w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS") // Разрешить GET и OPTIONS запросы
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Разрешить заголовок Content-Type
 
-	// Проверяем метод запроса
-	if r.Method == "OPTIONS" {
-		// Отправляем пустой ответ для предварительного запроса OPTIONS
-		w.WriteHeader(http.StatusOK)
-	}
 }
 func ValidExpression(expression string) bool {
 

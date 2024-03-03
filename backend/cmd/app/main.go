@@ -8,7 +8,7 @@ import (
 	"os"
 	"strconv"
 
-	server "github.com/xleshka/distributedcalc/backend/http-server/handler/add"
+	server "github.com/xleshka/distributedcalc/backend/http-server/handler"
 	"github.com/xleshka/distributedcalc/backend/http-server/middleware"
 	"github.com/xleshka/distributedcalc/backend/internal/config"
 	"github.com/xleshka/distributedcalc/backend/internal/orchestrator/db"
