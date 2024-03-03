@@ -1,18 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { sendReqGET } from '../utils/req.ts';
+import { getAllExpressions, postExpression } from '../utils/req.js';
 import ExpressionTag from './Expression.js';
 import Error from '../components/error/Error.js';
 
 const Expressions = () => {
-	const PATH = 'http://localhost:8082/';
 	const [ExpressionArr, setExpressionArr] = useState([]);
 	const [newExpression, setNewExpression] = useState('');
 
 	useEffect(() => {
 		const fetchData = async () => {
 			try {
-				const data = await sendReqGET(PATH);
-				setExpressionArr(data);
+				const expressions = await getAllExpressions();
+				setExpressionArr(expressions);
 			} catch (error) {
 				console.error('Error fetching agents:', error);
 			}
@@ -27,7 +26,8 @@ const Expressions = () => {
 				// Отправка запроса для добавления нового выражения
 				console.log('Добавление нового выражения:', newExpression);
 
-				setNewExpression('');
+				setNewExpression(newExpression);
+				await postExpression(newExpression);
 			} catch (error) {
 				console.error('Error adding expression:', error);
 			}
