@@ -1,17 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import Agent from './Agent';
-import { sendReqGET } from '../utils/req.ts';
+import { getAllAgents } from '../utils/req.js';
 import Error from '../components/error/Error';
 
 const Agents = () => {
-	const PATH = 'http://localhost:8082/agents';
 	const [AgentsArr, setAgentsArr] = useState([]);
 
 	useEffect(() => {
 		const fetchData = async () => {
 			try {
-				const data = await sendReqGET(PATH);
-				setAgentsArr(data);
+				const agents = await getAllAgents();
+				setAgentsArr(agents);
 			} catch (error) {
 				console.error('Error fetching agents:', error);
 			}
@@ -30,11 +29,11 @@ const Agents = () => {
 					) : (
 						AgentsArr.map(ag => (
 							<Agent
-								key={ag.Id}
-								ID={ag.Id}
-								Status={ag.Status}
-								Address={ag.Address}
-								LastHearBeat={ag.LastHearBeat}
+								key={ag.id}
+								ID={ag.id}
+								Status={ag.status_code}
+								Address={ag.address}
+								LastHearBeat={ag.last_heartbeat}
 							/>
 						))
 					)}

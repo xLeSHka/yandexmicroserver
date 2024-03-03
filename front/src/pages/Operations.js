@@ -1,8 +1,7 @@
-import { sendReqPOST } from '../utils/req.ts';
+import { postOperations } from '../utils/req.js';
 
 const Operations = () => {
 	const operations = ['plus', 'minus', 'multiply', 'divide'];
-	const PATH = 'http://localhost:8082/setOperation';
 
 	const handleSubmit = event => {
 		event.preventDefault();
@@ -44,14 +43,7 @@ const Operations = () => {
 				throw new Error('НЕ СТОИО СО МНОЙ ШУТИТЬ!');
 			}
 
-			sendReqPOST(operation_, PATH).then(response => {
-				if (!response.ok && err !== null) {
-					err = null;
-					alert(
-						'Тут вобщем это самое то\nВсе сломалось,\nТвои данные не отправились'
-					);
-				}
-			});
+			postOperations(operation_);
 		});
 	};
 

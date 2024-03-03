@@ -11,7 +11,6 @@ import (
 
 	"github.com/xleshka/distributedcalc/backend/internal/agent"
 	app "github.com/xleshka/distributedcalc/backend/internal/application/app"
-	sl "github.com/xleshka/distributedcalc/backend/internal/lib/api"
 	orch "github.com/xleshka/distributedcalc/backend/internal/orchestrator"
 )
 
@@ -22,12 +21,22 @@ func GetExpressionHandler(ctx context.Context, log *slog.Logger, rep orch.Reposi
 			http.Error(w, "bad post expression method type", http.StatusBadRequest)
 			return
 		}
-		app.CORSPOST(w, r)
+
+		// Устанавливаем заголовки CORS
+		w.Header().Set("Access-Control-Allow-Origin", "*")              // Разрешить запросы от всех доменов
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Разрешить GET и OPTIONS запросы
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")  // Разрешить заголовок Content-Type
+
+		// Проверяем метод запроса
+		if r.Method == "OPTIONS" {
+			// Отправляем пустой ответ для предварительного запроса OPTIONS
+			w.WriteHeader(http.StatusOK)
+		}
 
 		body, err := io.ReadAll(r.Body)
 		defer r.Body.Close()
 		if err != nil && err != io.EOF {
-			log.Error("failed decode request body", sl.Err(err))
+			log.Error("failed decode request body", err)
 			http.Error(w, fmt.Sprintf("body read error: %v", err), http.StatusBadRequest)
 			return
 		}
@@ -69,7 +78,16 @@ func PostExpressionsHandler(ctx context.Context, log *slog.Logger, rep orch.Repo
 			http.Error(w, "bad get expressions method type", http.StatusBadRequest)
 			return
 		}
-		app.CORSGET(w, r)
+		// Устанавливаем заголовки CORS
+		w.Header().Set("Access-Control-Allow-Origin", "*")             // Разрешить запросы от всех доменов
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS") // Разрешить GET и OPTIONS запросы
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Разрешить заголовок Content-Type
+
+		// Проверяем метод запроса
+		if r.Method == "OPTIONS" {
+			// Отправляем пустой ответ для предварительного запроса OPTIONS
+			w.WriteHeader(http.StatusOK)
+		}
 
 		expressions, err := app.AllExpressions(ctx, log, rep)
 		if err != nil {
@@ -93,7 +111,17 @@ func PostOperationsHandler(ctx context.Context, log *slog.Logger, rep orch.Repos
 			http.Error(w, "ad method get operations", http.StatusBadRequest)
 			return
 		}
-		app.CORSGET(w, r)
+		// Устанавливаем заголовки CORS
+		w.Header().Set("Access-Control-Allow-Origin", "*")             // Разрешить запросы от всех доменов
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS") // Разрешить GET и OPTIONS запросы
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Разрешить заголовок Content-Type
+
+		// Проверяем метод запроса
+		if r.Method == "OPTIONS" {
+			// Отправляем пустой ответ для предварительного запроса OPTIONS
+			w.WriteHeader(http.StatusOK)
+		}
+
 		operations, err := app.AllOperations(ctx, log, rep)
 		if err != nil {
 			log.Error(fmt.Sprintf("failed bd get operaions: %v", err))
@@ -116,11 +144,21 @@ func GetOperationHandler(ctx context.Context, log *slog.Logger, rep orch.Reposit
 			http.Error(w, "bad post expression method type", http.StatusBadRequest)
 			return
 		}
-		app.CORSPOST(w, r)
+
+		// Устанавливаем заголовки CORS
+		w.Header().Set("Access-Control-Allow-Origin", "*")              // Разрешить запросы от всех доменов
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS") // Разрешить GET и OPTIONS запросы
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")  // Разрешить заголовок Content-Type
+
+		// Проверяем метод запроса
+		if r.Method == "OPTIONS" {
+			// Отправляем пустой ответ для предварительного запроса OPTIONS
+			w.WriteHeader(http.StatusOK)
+		}
 
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
-			log.Error("failed read req body", sl.Err(err))
+			log.Error("failed read req body", err)
 			http.Error(w, "failed read req body", http.StatusInternalServerError)
 			return
 		}
@@ -128,14 +166,14 @@ func GetOperationHandler(ctx context.Context, log *slog.Logger, rep orch.Reposit
 		var oper orch.Operation
 		err = json.Unmarshal(body, &oper)
 		if err != nil {
-			log.Error("failed unmarshal req body", sl.Err(err))
+			log.Error("failed unmarshal req body", err)
 			http.Error(w, "failed unmarshal req body", http.StatusInternalServerError)
 			return
 		}
 		fmt.Println(oper)
 		err = app.SetOperation(ctx, log, oper, rep)
 		if err != nil {
-			log.Error("failed set operation to bd", sl.Err(err))
+			log.Error("failed set operation to bd", err)
 			http.Error(w, "failed set operation to bd", http.StatusInternalServerError)
 			return
 		}
@@ -247,7 +285,16 @@ func PostAgentsHandler(ctx context.Context, log *slog.Logger, rep orch.Repositor
 			http.Error(w, "bad get agents method type", http.StatusBadRequest)
 			return
 		}
-		app.CORSGET(w, r)
+		// Устанавливаем заголовки CORS
+		w.Header().Set("Access-Control-Allow-Origin", "*")             // Разрешить запросы от всех доменов
+		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS") // Разрешить GET и OPTIONS запросы
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type") // Разрешить заголовок Content-Type
+
+		// Проверяем метод запроса
+		if r.Method == "OPTIONS" {
+			// Отправляем пустой ответ для предварительного запроса OPTIONS
+			w.WriteHeader(http.StatusOK)
+		}
 
 		agents, err := app.AllAgents(ctx, log, rep)
 		if err != nil {

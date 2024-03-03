@@ -182,7 +182,9 @@ func InitAllExpressions(ctx context.Context, log *slog.Logger, rep orch.Reposito
 	rep.GetAllExpressions(ctx, expressionCache)
 	for _, expr := range expressionCache.Data {
 		expression, _ := expr.(orch.Expression)
-		go CalcExpression(ctx, log, expression, rep)
+		if expression.Status == "wait" {
+			go CalcExpression(ctx, log, expression, rep)
+		}
 	}
 	return nil
 }
