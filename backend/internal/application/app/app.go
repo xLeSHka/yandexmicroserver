@@ -9,7 +9,6 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
-	"sync"
 	"time"
 	"unicode"
 
@@ -24,22 +23,6 @@ var (
 	operaionsCache  *cache.Cache
 	expressionCache *cache.Cache
 )
-
-type SafeGoroutinCounter struct {
-	GoroutinCounter int
-	mu              sync.RWMutex
-}
-
-func (SGC *SafeGoroutinCounter) Get() int {
-	SGC.mu.RLock()
-	defer SGC.mu.RUnlock()
-	return SGC.GoroutinCounter
-}
-func (SGC *SafeGoroutinCounter) Sum(v int) {
-	SGC.mu.Lock()
-	defer SGC.mu.Unlock()
-	SGC.GoroutinCounter += v
-}
 
 func Initialize(agentCount int, ctx context.Context, logg *slog.Logger, rep orch.Repository, client *http.Client) error {
 	agentCache = cache.NewCache()
