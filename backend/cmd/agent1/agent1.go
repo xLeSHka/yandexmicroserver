@@ -38,20 +38,25 @@ func main() {
 	ag.ID, err = app.AddAgentReq(agentCtxWithCancel, logg, ag, addAgentUrl, client)
 
 	if err != nil {
+		ag.Status = "Error"
 		Shutdown(agentCtxWithCancel, cancelCtx, logg, ag, heartBeatUrl, client, errCh)
 		return
 	}
 	go func() {
-		select {
-		case <-agentCtxWithCancel.Done():
-			Shutdown(agentCtxWithCancel, cancelCtx, logg, ag, heartBeatUrl, client, errCh)
-			return
-		case <-errCh:
-			Shutdown(agentCtxWithCancel, cancelCtx, logg, ag, heartBeatUrl, client, errCh)
-			return
-		case <-time.After(120 * time.Second):
-			ag.LastHearBeat = time.Now()
-			app.AgentHeartBeat(agentCtxWithCancel, logg, ag, heartBeatUrl, client, errCh)
+		for {
+			select {
+			case <-agentCtxWithCancel.Done():
+				ag.Status = "Error"
+				Shutdown(agentCtxWithCancel, cancelCtx, logg, ag, heartBeatUrl, client, errCh)
+				return
+			case <-errCh:
+				ag.Status = "Error"
+				Shutdown(agentCtxWithCancel, cancelCtx, logg, ag, heartBeatUrl, client, errCh)
+				return
+			case <-time.After(120 * time.Second):
+				ag.LastHearBeat = time.Now()
+				app.AgentHeartBeat(agentCtxWithCancel, logg, ag, heartBeatUrl, client, errCh)
+			}
 		}
 	}()
 	mux := http.NewServeMux()
@@ -63,7 +68,7 @@ func main() {
 
 }
 func Shutdown(ctx context.Context, cancelCtx context.CancelFunc, log *slog.Logger, ag agent.Agent, url string, client *http.Client, errCh chan struct{}) {
-	ag.Status = "Error"
+
 	app.AgentHeartBeat(ctx, log, ag, url, client, errCh)
 	cancelCtx()
 }

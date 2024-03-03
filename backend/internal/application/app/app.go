@@ -329,7 +329,6 @@ func AllAgents(ctx context.Context, log *slog.Logger, rep orch.Repository) ([]ag
 func SetAgent(ctx context.Context, log *slog.Logger, ag agent.Agent, rep orch.Repository) error {
 	if ag.Status == "Error" {
 		go DeleteAgent(ctx, log, ag.Address, rep)
-		return nil
 	}
 	err := rep.SetAgent(ctx, ag, agentCache)
 	if err != nil {
@@ -401,7 +400,7 @@ func timerStop(v time.Timer, ctx context.Context, address string, rep orch.Repos
 }
 
 func DeleteAgent(ctx context.Context, log *slog.Logger, address string, rep orch.Repository) {
-	timer := time.NewTimer(60 * time.Second)
+	timer := time.NewTimer(20 * time.Second)
 
 	err := timerStop(*timer, ctx, address, rep)
 	if err != nil {
