@@ -44,6 +44,7 @@ func main() {
 		Shutdown(agentCtxWithCancel, cancelCtx, logg, ag, heartBeatUrl, client, errCh)
 		return
 	}
+
 	go func() {
 		for {
 			select {

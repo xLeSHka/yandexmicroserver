@@ -29,38 +29,40 @@ export async function getAllAgents() {
 }
 
 export async function postOperations(data) {
-	try {
-		const requestOptions = {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: JSON.stringify(data),
-		};
-		const response = await fetch(
-			'http://localhost:8082/setOperation',
-			requestOptions
-		);
-		if (!response.ok) {
-			throw new Error(
-				'Failed to post operations. Status code: ' + response.status
-			);
-		}
-		const responseData = await response.json();
-		console.log(responseData);
-	} catch (error) {
-		console.error('There was an error!', error);
-	}
+    try {
+        const requestOptions = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        };
+        const response = await fetch(
+            'http://localhost:8082/setOperation',
+            requestOptions
+        );
+        if (!response.ok) {
+            throw new Error(
+                'Failed to post operations. Status code: ' + response.status
+            );
+        }
+        const responseData = await response.json();
+        console.log(responseData);
+    } catch (error) {
+        console.error('There was an error!', error);
+    }
 }
 
 export async function postExpression(expression = '') {
 	try {
+		console.log(expression)
 		const requestOptions = {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 			},
-			body: JSON.stringify({ expression }),
+			
+			body: JSON.stringify(expression),
 		};
 		const response = await fetch(
 			'http://localhost:8082/add',

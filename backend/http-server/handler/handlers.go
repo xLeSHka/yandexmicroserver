@@ -17,10 +17,10 @@ import (
 func GetExpressionHandler(ctx context.Context, log *slog.Logger, rep orch.Repository, client *http.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		if r.Method != http.MethodPost {
-			http.Error(w, "bad post expression method type", http.StatusBadRequest)
-			return
-		}
+		// if r.Method != http.MethodPost {
+		// 	http.Error(w, "bad post expression method type", http.StatusBadRequest)
+		// 	return
+		// }
 
 		// Устанавливаем заголовки CORS
 		w.Header().Set("Access-Control-Allow-Origin", "*")              // Разрешить запросы от всех доменов
@@ -41,12 +41,14 @@ func GetExpressionHandler(ctx context.Context, log *slog.Logger, rep orch.Reposi
 			return
 		}
 		expr := string(body)
+		expr = expr[1 : len([]rune(expr))-1]
+		log.Info(expr)
 		if !app.ValidExpression(expr) {
 			log.Error("invalid exprassion")
 			http.Error(w, fmt.Sprintf("invalid exprassion: %v", err), http.StatusBadRequest)
 			return
 		}
-
+		//полный код можно посмотреть на gitHub
 		expression := &orch.Expression{}
 		expression.Expression = expr
 		t := time.Now()
@@ -73,11 +75,11 @@ func GetExpressionHandler(ctx context.Context, log *slog.Logger, rep orch.Reposi
 
 func PostExpressionsHandler(ctx context.Context, log *slog.Logger, rep orch.Repository, client *http.Client) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			log.Error("bad get expressions method type")
-			http.Error(w, "bad get expressions method type", http.StatusBadRequest)
-			return
-		}
+		// if r.Method != http.MethodGet {
+		// 	log.Error("bad get expressions method type")
+		// 	http.Error(w, "bad get expressions method type", http.StatusBadRequest)
+		// 	return
+		// }
 		// Устанавливаем заголовки CORS
 		w.Header().Set("Access-Control-Allow-Origin", "*")             // Разрешить запросы от всех доменов
 		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS") // Разрешить GET и OPTIONS запросы
@@ -106,11 +108,11 @@ func PostExpressionsHandler(ctx context.Context, log *slog.Logger, rep orch.Repo
 
 func PostOperationsHandler(ctx context.Context, log *slog.Logger, rep orch.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			log.Error("bad get operations method type")
-			http.Error(w, "ad method get operations", http.StatusBadRequest)
-			return
-		}
+		// if r.Method != http.MethodGet {
+		// 	log.Error("bad get operations method type")
+		// 	http.Error(w, "ad method get operations", http.StatusBadRequest)
+		// 	return
+		// }
 		// Устанавливаем заголовки CORS
 		w.Header().Set("Access-Control-Allow-Origin", "*")             // Разрешить запросы от всех доменов
 		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS") // Разрешить GET и OPTIONS запросы
@@ -139,11 +141,11 @@ func PostOperationsHandler(ctx context.Context, log *slog.Logger, rep orch.Repos
 
 func GetOperationHandler(ctx context.Context, log *slog.Logger, rep orch.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			log.Error("bad post expression method type")
-			http.Error(w, "bad post expression method type", http.StatusBadRequest)
-			return
-		}
+		// if r.Method != http.MethodPost {
+		// 	log.Error("bad post expression method type")
+		// 	http.Error(w, "bad post expression method type", http.StatusBadRequest)
+		// 	return
+		// }
 
 		// Устанавливаем заголовки CORS
 		w.Header().Set("Access-Control-Allow-Origin", "*")              // Разрешить запросы от всех доменов
@@ -280,11 +282,11 @@ func GetAgentStatusHandler(ctx context.Context, log *slog.Logger, rep orch.Repos
 }
 func PostAgentsHandler(ctx context.Context, log *slog.Logger, rep orch.Repository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			log.Error("bad get agents method type")
-			http.Error(w, "bad get agents method type", http.StatusBadRequest)
-			return
-		}
+		// if r.Method != http.MethodGet {
+		// 	log.Error("bad get agents method type")
+		// 	http.Error(w, "bad get agents method type", http.StatusBadRequest)
+		// 	return
+		// }
 		// Устанавливаем заголовки CORS
 		w.Header().Set("Access-Control-Allow-Origin", "*")             // Разрешить запросы от всех доменов
 		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS") // Разрешить GET и OPTIONS запросы
