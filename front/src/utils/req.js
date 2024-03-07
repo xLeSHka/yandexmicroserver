@@ -35,7 +35,7 @@ export async function postOperations(data) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(data),
+            body: data,
         };
         const response = await fetch(
             'http://localhost:8082/setOperation',
@@ -62,7 +62,7 @@ export async function postExpression(expression = '') {
 				'Content-Type': 'application/json',
 			},
 			
-			body: JSON.stringify(expression),
+			body: expression,
 		};
 		const response = await fetch(
 			'http://localhost:8082/add',

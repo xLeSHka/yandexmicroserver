@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/xleshka/distributedcalc/backend/internal/agent"
@@ -41,7 +42,6 @@ func GetExpressionHandler(ctx context.Context, log *slog.Logger, rep orch.Reposi
 			return
 		}
 		expr := string(body)
-		expr = expr[1 : len([]rune(expr))-1]
 		log.Info(expr)
 		if !app.ValidExpression(expr) {
 			log.Error("invalid exprassion")
@@ -164,13 +164,13 @@ func GetOperationHandler(ctx context.Context, log *slog.Logger, rep orch.Reposit
 			http.Error(w, "failed read req body", http.StatusInternalServerError)
 			return
 		}
+
 		defer r.Body.Close()
-		var oper orch.Operation
-		err = json.Unmarshal(body, &oper)
-		if err != nil {
-			log.Error("failed unmarshal req body", err)
-			http.Error(w, "failed unmarshal req body", http.StatusInternalServerError)
-			return
+		op := app.ValidOperation(string(body))
+		execTime, _ := strconv.Atoi(op[1])
+		oper := orch.Operation{
+			Operation:                   op[0],
+			ExecutionTimeByMilliseconds: execTime,
 		}
 		fmt.Println(oper)
 		err = app.SetOperation(ctx, log, oper, rep)
@@ -180,7 +180,12 @@ func GetOperationHandler(ctx context.Context, log *slog.Logger, rep orch.Reposit
 			return
 		}
 		log.Info("req body decoded", slog.Any("req", oper))
-
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(oper); err != nil {
+			log.Error("json encode error")
+			http.Error(w, fmt.Sprintf("json encode error: %v", err), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 

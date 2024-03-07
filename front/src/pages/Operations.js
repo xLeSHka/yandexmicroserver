@@ -1,51 +1,49 @@
 import { postOperations } from '../utils/req.js';
 
 const Operations = () => {
-	const operations = ['plus', 'minus', 'multiply', 'divide'];
+    const operations = ['plus', 'minus', 'multiply', 'divide'];
 
-	const handleSubmit = event => {
-		event.preventDefault();
-		const form = event.target;
-		const formData = new FormData(form);
-		let err = 'Pizza';
-		operations.forEach(operation => {
-			const time = formData.get(operation);
-			localStorage.setItem(operation, time);
-			let name = '';
-			switch (operation) {
-				case 'plus':
-					name = '+';
-					break;
-				case 'minus':
-					name = '-';
-					break;
-				case 'multiply':
-					name = '*';
-					break;
-				case 'divide':
-					name = '/';
-					break;
-				default:
-					alert(
-						'Слушай, я для кого этот код писал со всей логикой? Я тебе сейчас все сломаю >-<'
-					);
-					throw new Error('НЕ СТОИО СО МНОЙ ШУТИТЬ!');
-			}
-			const operation_ = {
-				Operation: name,
-				ExecutionTimeByMilliseconds: String(time),
-			};
+    const handleSubmit = event => {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        let err = 'Pizza';
+        operations.forEach(operation => {
+            const time = formData.get(operation);
+            localStorage.setItem(operation, time);
+            let name = '';
+            switch (operation) {
+                case 'plus':
+                    name = '+';
+                    break;
+                case 'minus':
+                    name = '-';
+                    break;
+                case 'multiply':
+                    name = '*';
+                    break;
+                case 'divide':
+                    name = '/';
+                    break;
+                default:
+                    alert(
+                        'Слушай, я для кого этот код писал со всей логикой? Я тебе сейчас все сломаю >-<'
+                    );
+                    throw new Error('НЕ СТОИЛО СО МНОЙ ШУТИТЬ!');
+            }
 
-			if (parseInt(time) <= 0) {
-				alert(
-					'Слушай, я для кого этот код писал со всей логикой? Я тебе сейчас все сломаю >-<\nЗачем ты вообще в DEVTOOLS полез?'
-				);
-				throw new Error('НЕ СТОИО СО МНОЙ ШУТИТЬ!');
-			}
+            const data = name + ' ' + time;
 
-			postOperations(operation_);
-		});
-	};
+            if (parseInt(time) <= 0) {
+                alert(
+                    'Слушай, я для кого этот код писал со всей логикой? Я тебе сейчас все сломаю >-<\nЗачем ты вообще в DEVTOOLS полез?'
+                );
+                throw new Error('НЕ СТОИО СО МНОЙ ШУТИТЬ!');
+            }
+
+            postOperations(data);
+        });
+    };
 
 	return (
 		<main className='section'>
@@ -67,6 +65,7 @@ const Operations = () => {
 									placeholder='Enter number'
 									required
 									min='1'
+									max='999999'
 									defaultValue={localStorage.getItem(
 										operation
 									)}

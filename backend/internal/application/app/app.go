@@ -9,6 +9,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 	"unicode"
 
@@ -77,6 +78,9 @@ func ValidExpression(expression string) bool {
 		}
 	}
 	return true
+}
+func ValidOperation(oper string) []string {
+	return strings.Fields(oper)
 }
 
 // func Cacl(Expression string, log *slog.Logger) string {
