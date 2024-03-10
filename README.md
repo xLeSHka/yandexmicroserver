@@ -19,6 +19,11 @@ in terminal
 in cmd
 #### `curl -X GET http://localhost:8082/initialize`
 
+### Step 5
+in terminal
+#### `cd .\front`
+#### `npm start`
+
 ## Post expression
 Добавить выражение, в скобках указывать выражение
 > Обязательно пробелы между числами и операциями  
