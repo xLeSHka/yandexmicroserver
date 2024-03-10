@@ -1,7 +1,6 @@
 # microserver
 Distributed calculator of arithmetic expressions
 
-PRESENTATION https://prezi.com/view/XDFz10zV48ZefHZsaBfG/
 
 
 ## Starting
